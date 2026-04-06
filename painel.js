@@ -9,6 +9,7 @@ function initApp() {
     const leadModal = document.getElementById('leadModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
     const cancelBtn = document.getElementById('cancelBtn');
+    const deleteLeadBtn = document.getElementById('deleteLeadBtn');
     const leadForm = document.getElementById('leadForm');
     const toast = document.getElementById('toast');
     const navItems = document.querySelectorAll('.nav-item');
@@ -95,6 +96,7 @@ function initApp() {
         const motivoField = document.getElementById('motivo');
         if(motivoField) motivoField.value = '';
 
+        if(deleteLeadBtn) deleteLeadBtn.style.display = 'none';
         if(leadModal) leadModal.classList.add('active');
     }
 
@@ -105,6 +107,34 @@ function initApp() {
     if(addLeadBtn) addLeadBtn.addEventListener('click', openModal);
     if(closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
     if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // Delete Logic
+    if(deleteLeadBtn) {
+        deleteLeadBtn.addEventListener('click', async () => {
+            const id = document.getElementById('leadId') ? document.getElementById('leadId').value : null;
+            if (!id) return;
+            
+            if (!confirm('Você tem certeza absoluta que deseja excluir este Lead permanentemente?')) {
+                return;
+            }
+
+            if (!dbClient) {
+                showToast('Supabase não conectado!', 'error');
+                return;
+            }
+
+            try {
+                const { error } = await dbClient.from('leads').delete().eq('id', id);
+                if (error) throw error;
+                showToast('Lead excluído com sucesso.', 'success');
+                closeModal();
+                fetchLeads();
+            } catch (err) {
+                console.error(err);
+                showToast(`Erro ao excluir: ${err.message}`, 'error');
+            }
+        });
+    }
 
     // Form logic
     if(leadForm) {
@@ -340,6 +370,7 @@ function initApp() {
         const motivoField = document.getElementById('motivo');
         if(motivoField) motivoField.value = lead.motivo || '';
 
+        if(deleteLeadBtn) deleteLeadBtn.style.display = 'block';
         if(leadModal) leadModal.classList.add('active');
     };
 
