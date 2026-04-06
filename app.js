@@ -1,6 +1,6 @@
 // State
 let leads = [];
-let supabase = null;
+let dbClient = null;
 let broadcastIsRunning = false;
 
 function initApp() {
@@ -38,7 +38,7 @@ function initApp() {
         const supabaseUrl = 'https://ugsqqqswdnkhzzlcghcv.supabase.co';
         const supabaseKey = 'sb_publishable_zcrh64N1Jb5bSn-Hs21d1A_bSp0_K9L';
         if (window.supabase) {
-            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            dbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
         } else {
             showToast('Erro: Biblioteca do Supabase não foi carregada.', 'error');
         }
@@ -54,7 +54,7 @@ function initApp() {
 
     if(dataContato) dataContato.value = getTodayString();
 
-    if (supabase) {
+    if (dbClient) {
         fetchLeads();
     }
 
@@ -101,7 +101,7 @@ function initApp() {
     if(leadForm) {
         leadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!supabase) {
+            if (!dbClient) {
                 showToast('Supabase não conectado!', 'error');
                 return;
             }
@@ -132,11 +132,11 @@ function initApp() {
 
             try {
                 if (id) {
-                    const { error } = await supabase.from('leads').update(leadData).eq('id', id);
+                    const { error } = await dbClient.from('leads').update(leadData).eq('id', id);
                     if (error) throw error;
                     showToast('Lead atualizado com sucesso!', 'success');
                 } else {
-                    const { error } = await supabase.from('leads').insert([leadData]);
+                    const { error } = await dbClient.from('leads').insert([leadData]);
                     if (error) throw error;
                     showToast('Lead adicionado com sucesso!', 'success');
                 }
@@ -162,7 +162,7 @@ function initApp() {
     // Fetch and Render
     async function fetchLeads() {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await dbClient
                 .from('leads')
                 .select('*')
                 .order('created_at', { ascending: false });
