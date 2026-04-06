@@ -30,6 +30,9 @@
                 <a href="#" class="nav-item" data-target="broadcast-container">
                     <i class="fa-solid fa-paper-plane"></i> Disparos
                 </a>
+                <a href="#" class="nav-item" data-target="followup-container">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Follow-ups
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-info">
@@ -102,6 +105,38 @@
                         </div>
                         <div class="kanban-cards" id="column-Inativo">
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Follow-up View -->
+            <div class="board-container" id="followup-container" style="display: none;">
+                <div class="kanban-board">
+                    <!-- Coluna: Leads Frios -->
+                    <div class="kanban-column" style="width: 32%; min-width: unset;">
+                        <div class="column-header">
+                            <h3 style="color: #60A5FA;"><i class="fa-solid fa-snowflake"></i> Leads Frios (+7d) <span class="badge" id="count-frios">0</span></h3>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Contatados há mais de 1 semana sem compra ("Novo")</p>
+                        </div>
+                        <div class="kanban-cards" id="followup-frios"></div>
+                    </div>
+                    
+                    <!-- Coluna: Resgate de Teste -->
+                    <div class="kanban-column" style="width: 32%; min-width: unset;">
+                        <div class="column-header">
+                            <h3 style="color: #F59E0B;"><i class="fa-solid fa-rotate-left"></i> Resgate de Teste <span class="badge" id="count-resgate">0</span></h3>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Teste Grátis feito há 1 dia ou mais (Não comprou)</p>
+                        </div>
+                        <div class="kanban-cards" id="followup-resgate"></div>
+                    </div>
+
+                    <!-- Coluna: Vencimentos Hoje -->
+                    <div class="kanban-column" style="width: 32%; min-width: unset;">
+                        <div class="column-header">
+                            <h3 style="color: #EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> Vencimentos <span class="badge" id="count-vencimento">0</span></h3>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Ativos que vencem entre hoje e daqui 3 dias</p>
+                        </div>
+                        <div class="kanban-cards" id="followup-vencimento"></div>
                     </div>
                 </div>
             </div>
@@ -213,6 +248,28 @@
                         <div class="form-group" id="vencimentoGroup">
                             <label for="dataVencimento">Data de Vencimento</label>
                             <input type="date" id="dataVencimento">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="comprou">Comprou?</label>
+                            <select id="comprou">
+                                <option value="Pendente">Pendente (Em negociação)</option>
+                                <option value="Sim">Sim, Comprou</option>
+                                <option value="Não">Não</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="motivo">Motivo (se não comprou)</label>
+                            <select id="motivo">
+                                <option value="">Nenhum/Não se aplica</option>
+                                <option value="Preço">Achou Caro / Preço</option>
+                                <option value="Sem Dinheiro">Sem Dinheiro Hoje</option>
+                                <option value="Travou">Travou o teste</option>
+                                <option value="Sumiu">Vácuo (Parou de responder)</option>
+                                <option value="Outro">Outro motivo</option>
+                            </select>
                         </div>
                     </div>
 

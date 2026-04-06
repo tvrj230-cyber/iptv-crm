@@ -70,10 +70,13 @@ function initApp() {
                 if(targetId) {
                     const board = document.getElementById('board-container');
                     const broadcast = document.getElementById('broadcast-container');
+                    const followup = document.getElementById('followup-container');
                     const targetEl = document.getElementById(targetId);
                     
                     if(board) board.style.display = 'none';
                     if(broadcast) broadcast.style.display = 'none';
+                    if(followup) followup.style.display = 'none';
+                    
                     if(targetEl) targetEl.style.display = 'block';
                 }
             });
@@ -86,6 +89,12 @@ function initApp() {
         const idField = document.getElementById('leadId');
         if(idField) idField.value = '';
         if(dataContato) dataContato.value = getTodayString();
+        // Set new default statuses mapping for user requests
+        const comprouField = document.getElementById('comprou');
+        if(comprouField) comprouField.value = 'Pendente';
+        const motivoField = document.getElementById('motivo');
+        if(motivoField) motivoField.value = '';
+
         if(leadModal) leadModal.classList.add('active');
     }
 
@@ -115,18 +124,24 @@ function initApp() {
             const contato = document.getElementById('dataContato') ? document.getElementById('dataContato').value : '';
             const vencimento = document.getElementById('dataVencimento') ? (document.getElementById('dataVencimento').value || null) : null;
             const observacoes = document.getElementById('observacoes') ? document.getElementById('observacoes').value : '';
+            
+            // New fields
+            const comprou = document.getElementById('comprou') ? document.getElementById('comprou').value : 'Pendente';
+            const motivo = document.getElementById('motivo') ? document.getElementById('motivo').value : '';
 
             const leadData = {
                 nome,
                 telefone,
-                phone: telefone, // fallback for chatbot
-                whatsapp: telefone, // fallback for chatbot
+                phone: telefone,
+                whatsapp: telefone,
                 fonte,
                 status,
                 plano,
                 data_contato: contato,
                 data_vencimento: vencimento,
                 observacoes,
+                comprou,
+                motivo,
                 updated_at: new Date()
             };
 
@@ -169,6 +184,7 @@ function initApp() {
             if (error) throw error;
             leads = data || [];
             renderKanban();
+            renderFollowUps();
         } catch (error) {
             console.error(error);
             showToast(`Erro ao carregar: ${error.message}`, 'error');
@@ -210,7 +226,10 @@ function initApp() {
                     <div class="card-body">
                         <div class="card-info"><i class="fa-brands fa-whatsapp"></i> ${displayPhone}</div>
                         <div class="card-info"><i class="fa-regular fa-calendar"></i> ${dateStr}</div>
-                        <div><span class="tag">${lead.plano || 'Nenhum'}</span></div>
+                        <div>
+                            <span class="tag">${lead.plano || 'Nenhum'}</span>
+                            ${lead.comprou === 'Não' ? `<span class="tag" style="background:#EF4444; color:white;">Não comprou</span>` : ''}
+                        </div>
                     </div>
                 `;
                 column.appendChild(card);
@@ -225,6 +244,84 @@ function initApp() {
         });
     }
 
+    function renderFollowUps() {
+        const colFrios = document.getElementById('followup-frios');
+        const colResgate = document.getElementById('followup-resgate');
+        const colVencimento = document.getElementById('followup-vencimento');
+
+        if(colFrios) colFrios.innerHTML = '';
+        if(colResgate) colResgate.innerHTML = '';
+        if(colVencimento) colVencimento.innerHTML = '';
+
+        const todayTimestamp = new Date().getTime();
+        const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+        let numFrios = 0, numResgate = 0, numVencimento = 0;
+
+        leads.forEach(lead => {
+            const status = lead.status || 'Novo';
+            
+            // Frios (Novo + data_contato > 7 dias e Não Comprou)
+            if (status === 'Novo' && lead.comprou !== 'Sim' && lead.data_contato) {
+                const contactTime = new Date(lead.data_contato).getTime();
+                const diffDays = (todayTimestamp - contactTime) / DAY_IN_MS;
+                if (diffDays >= 7) {
+                    colFrios.appendChild(createFollowUpCard(lead, `Sem contato há ${Math.floor(diffDays)} dias`, '#60A5FA'));
+                    numFrios++;
+                }
+            }
+            
+            // Resgate (Teste Grátis + data_contato >= 1 dia)
+            if (status === 'Teste Grátis' && lead.data_contato) {
+                const contactTime = new Date(lead.data_contato).getTime();
+                const diffDays = (todayTimestamp - contactTime) / DAY_IN_MS;
+                if (diffDays >= 1) {
+                    colResgate.appendChild(createFollowUpCard(lead, `Teste enviado há ${Math.floor(diffDays)} dias`, '#F59E0B'));
+                    numResgate++;
+                }
+            }
+
+            // Vencimento (Ativo + data_vencimento em breve)
+            if (status === 'Ativo' && lead.data_vencimento) {
+                const expTime = new Date(lead.data_vencimento).getTime();
+                const diffDays = (expTime - todayTimestamp) / DAY_IN_MS;
+                // Vence entre ontem (-1) e daqui 3 dias (+3)
+                if (diffDays >= -1 && diffDays <= 4) {
+                    let msg = diffDays < 0 ? 'Venceu ontem' : (diffDays < 1 ? 'Vence HOJE' : `Vence em ${Math.floor(diffDays)} dias`);
+                    colVencimento.appendChild(createFollowUpCard(lead, msg, '#EF4444'));
+                    numVencimento++;
+                }
+            }
+        });
+
+        if(document.getElementById('count-frios')) document.getElementById('count-frios').innerText = numFrios;
+        if(document.getElementById('count-resgate')) document.getElementById('count-resgate').innerText = numResgate;
+        if(document.getElementById('count-vencimento')) document.getElementById('count-vencimento').innerText = numVencimento;
+    }
+
+    function createFollowUpCard(lead, infoMsg, color) {
+        const card = document.createElement('div');
+        card.className = 'lead-card';
+        
+        const displayNome = lead.nome || lead.name || lead.pushName || 'Sem Nome';
+        const displayPhone = lead.telefone || lead.phone || lead.whatsapp || 'S/N';
+        const actionPhone = displayPhone.replace(/\D/g, '');
+
+        card.innerHTML = `
+            <div class="card-header"><span class="card-title">${displayNome}</span></div>
+            <div class="card-body">
+                <div class="card-info"><i class="fa-brands fa-whatsapp"></i> ${displayPhone}</div>
+                <div class="card-info" style="color: ${color}; font-weight: 500;"><i class="fa-solid fa-clock"></i> ${infoMsg}</div>
+                
+                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                    <button onclick="window.sendUazapiFast('${actionPhone}', '${displayNome}')" class="btn-primary" style="flex: 1; padding: 6px; font-size: 12px; justify-content: center; background-color: #25D366; color: #111;"><i class="fa-brands fa-whatsapp"></i> UAZAPI</button>
+                    <button onclick="window.editLeadById('${lead.id}')" class="btn-secondary" style="flex: 1; padding: 6px; font-size: 12px; justify-content: center;"><i class="fa-solid fa-pen"></i> Editar</button>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+
     // Make editLead globally available for onclick inside HTML string
     window.editLead = function(lead) {
         document.getElementById('leadId').value = lead.id;
@@ -236,8 +333,42 @@ function initApp() {
         document.getElementById('dataContato').value = lead.data_contato || '';
         document.getElementById('dataVencimento').value = lead.data_vencimento || '';
         document.getElementById('observacoes').value = lead.observacoes || '';
+        
+        // Load new fields
+        const comprouField = document.getElementById('comprou');
+        if(comprouField) comprouField.value = lead.comprou || 'Pendente';
+        const motivoField = document.getElementById('motivo');
+        if(motivoField) motivoField.value = lead.motivo || '';
+
         if(leadModal) leadModal.classList.add('active');
     };
+
+    window.editLeadById = function(id) {
+        const lead = leads.find(l => l.id === id);
+        if(lead) window.editLead(lead);
+    }
+
+    window.sendUazapiFast = function(phone, name) {
+        // Pre-fill Broadcast tab and redirect
+        if(document.getElementById('broadcastTarget')) document.getElementById('broadcastTarget').value = 'Todos'; // Ignore filter
+        
+        // Auto-change nav
+        const broadcastNav = document.querySelector('a[data-target="broadcast-container"]');
+        if(broadcastNav) broadcastNav.click();
+
+        if(document.getElementById('broadcastMessage')) {
+            document.getElementById('broadcastMessage').value = `Olá ${name.split(' ')[0]}, tudo bem? Passando para avisar...`;
+        }
+
+        showToast(`Ir para a aba de disparos. Personalize a mensagem para ${name}.`, 'success');
+        
+        // To send ONLY to this person, we can just filter runtime leads array for quick broadcast
+        // In a real scenario it's better to build a 1-to-1 prompt, let's just make it simple:
+        leads = leads.filter(l => (l.telefone || l.phone || l.whatsapp || '').replace(/\D/g, '') === phone);
+        if(document.getElementById('broadcastLog')) {
+            document.getElementById('broadcastLog').innerText = `Fila Reduzida: Você está prestes a enviar somente para o ${name}. Clique em Iniciar.`;
+        }
+    }
 
     // --- BROADCAST LOGIC ---
     if (startBroadcastBtn) {
@@ -263,7 +394,7 @@ function initApp() {
                 return;
             }
 
-            if (!confirm(`Sério que deseja iniciar o disparo para ${targetLeads.length} leads? Lembre-se de manter esta aba aberta!`)) return;
+            if (!confirm(`Sério que deseja iniciar o disparo para ${targetLeads.length} leads?`)) return;
 
             // Start UI
             broadcastIsRunning = true;
@@ -325,7 +456,7 @@ function initApp() {
                         await new Promise(r => setTimeout(r, 1000));
                         timeRemaining--;
                         if (timeRemaining % 5 === 0 && broadcastLog) {
-                            broadcastLog.innerText = `Sucesso! Faltam ${timeRemaining}s para iniciar o próximo disparo...`;
+                            broadcastLog.innerText = `Sucesso! Faltam ${timeRemaining}s para disparar próximo...`;
                         }
                     }
                 }
@@ -333,6 +464,9 @@ function initApp() {
 
             // Finish UI
             broadcastIsRunning = false;
+            // Refetch to reset the leads queue to default if we reduced it
+            fetchLeads();
+            
             if(startBroadcastBtn) startBroadcastBtn.style.display = 'inline-block';
             if(stopBroadcastBtn) stopBroadcastBtn.style.display = 'none';
             
