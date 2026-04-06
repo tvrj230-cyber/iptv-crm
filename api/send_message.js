@@ -15,19 +15,33 @@ export default async function handler(req, res) {
     const INSTANCE_ID = process.env.UAZAPI_INSTANCE || '56mMDx';
     const API_KEY = process.env.UAZAPI_TOKEN || '10b97f21-ae5d-43fd-b5f8-c57499c98537';
 
-    const url = `${UAZAPI_URL}/message/sendText/${INSTANCE_ID}`;
+    const url = `${UAZAPI_URL}/sender/advanced`;
 
     try {
         const payload = {
-            number: phone,
-            text: message
+            instance: INSTANCE_ID,
+            delayMin: 4,
+            delayMax: 8,
+            info: "crm-ipvt-dispatch",
+            scheduled_for: 1,
+            messages: [
+                {
+                    number: phone, // "5511999999999"
+                    type: "text",
+                    text: message
+                }
+            ],
+            token: API_KEY
         };
 
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'apikey': API_KEY
+                'apikey': API_KEY,
+                'token': API_KEY,
+                'Authorization': `Bearer ${API_KEY}`,
+                'instance': INSTANCE_ID
             },
             body: JSON.stringify(payload)
         });
