@@ -3,7 +3,7 @@ let leads = [];
 let supabase = null;
 let broadcastIsRunning = false;
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
     // DOM Elements
     const addLeadBtn = document.getElementById('addLeadBtn');
     const leadModal = document.getElementById('leadModal');
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Navigation links
-    if (navItems) {
+    if (navItems && navItems.length > 0) {
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -68,9 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const targetId = item.getAttribute('data-target');
                 if(targetId) {
-                    document.getElementById('board-container').style.display = 'none';
-                    document.getElementById('broadcast-container').style.display = 'none';
-                    document.getElementById(targetId).style.display = 'block';
+                    const board = document.getElementById('board-container');
+                    const broadcast = document.getElementById('broadcast-container');
+                    const targetEl = document.getElementById(targetId);
+                    
+                    if(board) board.style.display = 'none';
+                    if(broadcast) broadcast.style.display = 'none';
+                    if(targetEl) targetEl.style.display = 'block';
                 }
             });
         });
@@ -79,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal Logic
     function openModal() {
         if(leadForm) leadForm.reset();
-        document.getElementById('leadId').value = '';
+        const idField = document.getElementById('leadId');
+        if(idField) idField.value = '';
         if(dataContato) dataContato.value = getTodayString();
         if(leadModal) leadModal.classList.add('active');
     }
@@ -101,15 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const id = document.getElementById('leadId').value;
-            const nome = document.getElementById('nome').value;
-            const telefone = document.getElementById('telefone').value;
-            const fonte = document.getElementById('fonte').value;
-            const status = document.getElementById('status').value;
-            const plano = document.getElementById('plano').value;
-            const contato = document.getElementById('dataContato').value;
-            const vencimento = document.getElementById('dataVencimento').value || null;
-            const observacoes = document.getElementById('observacoes').value;
+            const id = document.getElementById('leadId') ? document.getElementById('leadId').value : null;
+            const nome = document.getElementById('nome') ? document.getElementById('nome').value : '';
+            const telefone = document.getElementById('telefone') ? document.getElementById('telefone').value : '';
+            const fonte = document.getElementById('fonte') ? document.getElementById('fonte').value : '';
+            const status = document.getElementById('status') ? document.getElementById('status').value : '';
+            const plano = document.getElementById('plano') ? document.getElementById('plano').value : '';
+            const contato = document.getElementById('dataContato') ? document.getElementById('dataContato').value : '';
+            const vencimento = document.getElementById('dataVencimento') ? (document.getElementById('dataVencimento').value || null) : null;
+            const observacoes = document.getElementById('observacoes') ? document.getElementById('observacoes').value : '';
 
             const leadData = {
                 nome,
@@ -220,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Make editLead globally available for onclick inside HTML string
     window.editLead = function(lead) {
         document.getElementById('leadId').value = lead.id;
         document.getElementById('nome').value = lead.nome || lead.name || lead.pushName || '';
@@ -238,8 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         startBroadcastBtn.addEventListener('click', async () => {
             if (broadcastIsRunning) return;
 
-            const target = broadcastTarget.value;
-            let rawMessage = broadcastMessage.value.trim();
+            const target = broadcastTarget ? broadcastTarget.value : 'Todos';
+            let rawMessage = broadcastMessage ? broadcastMessage.value.trim() : '';
 
             if (!rawMessage) {
                 showToast('A mensagem não pode estar vazia.', 'error');
@@ -261,16 +267,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Start UI
             broadcastIsRunning = true;
-            startBroadcastBtn.style.display = 'none';
-            stopBroadcastBtn.style.display = 'inline-block';
-            broadcastProgressArea.style.display = 'block';
+            if(startBroadcastBtn) startBroadcastBtn.style.display = 'none';
+            if(stopBroadcastBtn) stopBroadcastBtn.style.display = 'inline-block';
+            if(broadcastProgressArea) broadcastProgressArea.style.display = 'block';
 
             let count = 0;
             const total = targetLeads.length;
 
             for (let i = 0; i < total; i++) {
                 if (!broadcastIsRunning) {
-                    broadcastLog.innerText = 'Disparo abortado pelo usuário.';
+                    if(broadcastLog) broadcastLog.innerText = 'Disparo abortado pelo usuário.';
                     break;
                 }
 
@@ -279,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const leadPhone = lead.telefone || lead.phone || lead.whatsapp || '';
 
                 if (!leadPhone) {
-                    broadcastLog.innerText = `Pulando contato sem número... (${leadName})`;
+                    if(broadcastLog) broadcastLog.innerText = `Pulando contato sem número... (${leadName})`;
                     continue;
                 }
 
@@ -287,9 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const personalizedMessage = rawMessage.replace(/\{\{nome\}\}/gi, leadName.split(' ')[0]);
 
                 count++;
-                broadcastProgressBar.style.width = `${(count / total) * 100}%`;
-                broadcastStatusText.innerText = `Enviando... (${count}/${total})`;
-                broadcastLog.innerText = `Enviando para ${leadName} (${leadPhone}). Aguarde...`;
+                if(broadcastProgressBar) broadcastProgressBar.style.width = `${(count / total) * 100}%`;
+                if(broadcastStatusText) broadcastStatusText.innerText = `Enviando... (${count}/${total})`;
+                if(broadcastLog) broadcastLog.innerText = `Enviando para ${leadName} (${leadPhone}). Aguarde...`;
 
                 try {
                     // Call Vercel API
@@ -312,13 +318,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (i < total - 1) {
                     // Wait 90 seconds (90000 ms) before next IF not last
                     let timeRemaining = 90;
-                    broadcastLog.innerText = `Sucesso para ${leadName}! Aguardando 90 segundos...`;
+                    if(broadcastLog) broadcastLog.innerText = `Sucesso para ${leadName}! Aguardando 90 segundos...`;
                     
                     for (let sec = 0; sec < 90; sec++) {
                         if (!broadcastIsRunning) break;
                         await new Promise(r => setTimeout(r, 1000));
                         timeRemaining--;
-                        if (timeRemaining % 5 === 0) { // Update log occasionally
+                        if (timeRemaining % 5 === 0 && broadcastLog) {
                             broadcastLog.innerText = `Sucesso! Faltam ${timeRemaining}s para iniciar o próximo disparo...`;
                         }
                     }
@@ -327,12 +333,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Finish UI
             broadcastIsRunning = false;
-            startBroadcastBtn.style.display = 'inline-block';
-            stopBroadcastBtn.style.display = 'none';
+            if(startBroadcastBtn) startBroadcastBtn.style.display = 'inline-block';
+            if(stopBroadcastBtn) stopBroadcastBtn.style.display = 'none';
             
             if (count === total) {
-                broadcastStatusText.innerText = `Concluído! (${count}/${total})`;
-                broadcastLog.innerText = 'Disparo finalizado com sucesso.';
+                if(broadcastStatusText) broadcastStatusText.innerText = `Concluído! (${count}/${total})`;
+                if(broadcastLog) broadcastLog.innerText = 'Disparo finalizado com sucesso.';
                 showToast('Todos os disparos foram realizados!', 'success');
             }
         });
@@ -342,9 +348,18 @@ document.addEventListener('DOMContentLoaded', () => {
         stopBroadcastBtn.addEventListener('click', () => {
             broadcastIsRunning = false;
             showToast('Pausando os disparos...', 'error');
-            stopBroadcastBtn.style.display = 'none';
-            startBroadcastBtn.style.display = 'inline-block';
-            startBroadcastBtn.innerText = 'Continuar Disparo';
+            if(stopBroadcastBtn) stopBroadcastBtn.style.display = 'none';
+            if(startBroadcastBtn) {
+                startBroadcastBtn.style.display = 'inline-block';
+                startBroadcastBtn.innerText = 'Continuar Disparo';
+            }
         });
     }
-});
+}
+
+// Ensure execution at the right time
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
