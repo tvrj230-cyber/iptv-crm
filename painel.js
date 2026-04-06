@@ -26,6 +26,11 @@ function initApp() {
     const broadcastProgressBar = document.getElementById('broadcastProgressBar');
     const broadcastLog = document.getElementById('broadcastLog');
 
+    // Import Elements
+    const csvFileInput = document.getElementById('csvFileInput');
+    const processCsvBtn = document.getElementById('processCsvBtn');
+    const importResult = document.getElementById('importResult');
+
     // Toast Helper
     function showToast(message, type = 'success') {
         if(!toast) return;
@@ -72,11 +77,13 @@ function initApp() {
                     const board = document.getElementById('board-container');
                     const broadcast = document.getElementById('broadcast-container');
                     const followup = document.getElementById('followup-container');
+                    const importCont = document.getElementById('import-container');
                     const targetEl = document.getElementById(targetId);
                     
                     if(board) board.style.display = 'none';
                     if(broadcast) broadcast.style.display = 'none';
                     if(followup) followup.style.display = 'none';
+                    if(importCont) importCont.style.display = 'none';
                     
                     if(targetEl) targetEl.style.display = 'block';
                 }
@@ -398,6 +405,106 @@ function initApp() {
         if(document.getElementById('broadcastLog')) {
             document.getElementById('broadcastLog').innerText = `Fila Reduzida: Você está prestes a enviar somente para o ${name}. Clique em Iniciar.`;
         }
+    }
+
+    // --- CSV IMPORT LOGIC ---
+    if (processCsvBtn) {
+        processCsvBtn.addEventListener('click', async () => {
+            if (!csvFileInput || !csvFileInput.files || csvFileInput.files.length === 0) {
+                showToast('Selecione um arquivo CSV primeiro.', 'error');
+                return;
+            }
+
+            const file = csvFileInput.files[0];
+            const reader = new FileReader();
+
+            processCsvBtn.disabled = true;
+            processCsvBtn.innerText = 'Processando...';
+            importResult.style.display = 'none';
+
+            reader.onload = async (e) => {
+                try {
+                    const text = e.target.result;
+                    // Split lines handling \r\n or \n
+                    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                    if (lines.length < 2) {
+                        throw new Error("Arquivo vazio ou sem cabeçalhos.");
+                    }
+
+                    // Discover delimiter (virgula ou ponto-e-virgula)
+                    const firstLine = lines[0];
+                    const delimiter = firstLine.includes(';') ? ';' : ',';
+
+                    const headers = firstLine.split(delimiter).map(h => h.trim().toLowerCase());
+                    
+                    // Encontrar a posição ("index") da coluna nome e da coluna telefone
+                    const nameIdx = headers.findIndex(h => h.includes('nome') || h.includes('name'));
+                    let phoneIdx = headers.findIndex(h => h.includes('telefone') || h.includes('phone') || h.includes('celular') || h.includes('whatsapp') || h.includes('número') || h.includes('numero'));
+
+                    if (nameIdx === -1 || phoneIdx === -1) {
+                         throw new Error(`Não consegui identificar as colunas de "Nome" ou "Telefone". Cabeçalhos encontrados: ${headers.join(', ')}`);
+                    }
+
+                    const arrayToInsert = [];
+                    const todayStr = getTodayString();
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, '')); // remove quoted strings if exist
+                        
+                        const contatoNome = cols[nameIdx] || 'S/N';
+                        const contatoPhone = cols[phoneIdx] || '';
+
+                        // Limpar o telefone deixando apenas numeros
+                        const cleanPhone = contatoPhone.replace(/\D/g, '');
+                        if(cleanPhone.length < 8) continue; // Pula se n for um num valido minimamente
+
+                        arrayToInsert.push({
+                            nome: contatoNome,
+                            phone: cleanPhone,
+                            whatsapp: cleanPhone,
+                            fonte: 'Importação CSV',
+                            status: 'Novo',
+                            plano: 'Nenhum',
+                            comprou: 'Pendente',
+                            motivo: '',
+                            data_contato: todayStr,
+                            updated_at: new Date()
+                        });
+                    }
+
+                    if(arrayToInsert.length === 0) {
+                        throw new Error("Nenhum contato válido encontrado com números de telefone.");
+                    }
+
+                    // Tentar submeter em lote para o Supabase
+                    const { error } = await dbClient.from('leads').insert(arrayToInsert);
+                    if(error) throw error;
+
+                    // Sucesso
+                    showToast(`${arrayToInsert.length} leads importados com sucesso!`, 'success');
+                    importResult.style.display = 'block';
+                    importResult.style.color = '#2E7D32';
+                    importResult.style.borderColor = '#25D366';
+                    importResult.style.backgroundColor = 'rgba(37, 211, 102, 0.1)';
+                    importResult.innerHTML = `<strong>Sucesso!</strong> Foram importados <b>${arrayToInsert.length}</b> novos contatos que já estão aguardando você na aba "Dashboard".`;
+                    csvFileInput.value = ''; // clean input
+                    
+                    fetchLeads(); // Reload
+                } catch(error) {
+                    showToast(`Erro na importação: ${error.message}`, 'error');
+                    importResult.style.display = 'block';
+                    importResult.style.color = '#EF4444';
+                    importResult.style.borderColor = '#EF4444';
+                    importResult.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                    importResult.innerHTML = `<strong>Erro!</strong> ${error.message}`;
+                } finally {
+                    processCsvBtn.disabled = false;
+                    processCsvBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Importar e Salvar Leads';
+                }
+            };
+
+            reader.readAsText(file);
+        });
     }
 
     // --- BROADCAST LOGIC ---
