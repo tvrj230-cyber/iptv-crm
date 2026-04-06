@@ -161,7 +161,6 @@ function initApp() {
 
             const leadData = {
                 nome,
-                telefone,
                 phone: telefone,
                 whatsapp: telefone,
                 fonte,
