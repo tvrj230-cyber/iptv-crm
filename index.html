@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV CRM - Painel</title>
+    <!-- Google Fonts for typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-bolt logo-icon"></i>
+                <h2>IPTV CRM</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-target="board-container">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-target="broadcast-container">
+                    <i class="fa-solid fa-paper-plane"></i> Disparos
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-bar">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Pesquisar leads...">
+                </div>
+                <div class="top-actions">
+                    <button id="addLeadBtn" class="btn-primary">
+                        <i class="fa-solid fa-plus"></i> Novo Lead
+                    </button>
+                </div>
+            </header>
+
+            <div class="board-container" id="board-container">
+                <!-- Kanban Board -->
+                <div class="kanban-board">
+                    <!-- Coluna: Novo -->
+                    <div class="kanban-column" data-status="Novo">
+                        <div class="column-header">
+                            <h3>Novo <span class="badge" id="count-Novo">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Novo">
+                            <!-- Cards go here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna: Teste Grátis -->
+                    <div class="kanban-column" data-status="Teste Grátis">
+                        <div class="column-header">
+                            <h3>Teste Grátis <span class="badge" id="count-Teste Grátis">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Teste Grátis">
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Ativo -->
+                    <div class="kanban-column" data-status="Ativo">
+                        <div class="column-header">
+                            <h3>Ativo <span class="badge" id="count-Ativo">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Ativo">
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Vencido -->
+                    <div class="kanban-column" data-status="Vencido">
+                        <div class="column-header">
+                            <h3>Vencido <span class="badge" id="count-Vencido">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Vencido">
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Inativo -->
+                    <div class="kanban-column" data-status="Inativo">
+                        <div class="column-header">
+                            <h3>Inativo <span class="badge" id="count-Inativo">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Inativo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broadcast View -->
+            <div class="broadcast-container" id="broadcast-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="broadcast-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 24px; border-radius: var(--radius-lg);">
+                    <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Disparo em Massa Automático</h2>
+                    
+                    <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--status-teste); padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                        <p style="font-size: 14px; color: var(--text-primary);"><strong style="color: var(--status-teste)">IMPORTANTE:</strong> Mantenha esta aba do navegador aberta enquanto o disparo estiver ocorrendo. O sistema fará pausas de 90 segundos entre as mensagens para evitar bloqueios do WhatsApp.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Para quem enviar?</label>
+                        <select id="broadcastTarget" style="width: 100%; max-width: 400px;">
+                            <option value="Todos">Todos os Leads</option>
+                            <option value="Novo">Apenas "Novo"</option>
+                            <option value="Teste Grátis">Apenas "Teste Grátis"</option>
+                            <option value="Ativo">Apenas "Ativo"</option>
+                            <option value="Vencido">Apenas "Vencido"</option>
+                            <option value="Inativo">Apenas "Inativo"</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sua Mensagem</label>
+                        <textarea id="broadcastMessage" rows="6" style="width: 100%; max-width: 600px;" placeholder="Olá {{nome}}! Tudo bem? Temos uma novidade incrível..."></textarea>
+                        <small style="color: var(--text-muted); margin-top: 5px;">Dica: Use <strong>{{nome}}</strong> para chamar o lead pelo nome salvo.</small>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <button id="startBroadcastBtn" class="btn-primary" style="background-color: #25D366; color: #111; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);"><i class="fa-solid fa-play"></i> Iniciar Disparo</button>
+                        <button id="stopBroadcastBtn" class="btn-secondary" style="display: none; border-color: var(--status-vencido); color: var(--status-vencido);"><i class="fa-solid fa-stop"></i> Pausar Disparo</button>
+                    </div>
+
+                    <div id="broadcastProgressArea" style="display: none; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                        <h3 id="broadcastStatusText" style="margin-bottom: 5px;">Carregando...</h3>
+                        <div style="background: var(--bg-main); border-radius: 10px; height: 12px; width: 100%; max-width: 600px; margin: 10px 0; overflow: hidden; border: 1px solid var(--border-color);">
+                            <div id="broadcastProgressBar" style="background: #25D366; height: 12px; width: 0%; transition: width 0.5s;"></div>
+                        </div>
+                        <p id="broadcastLog" style="font-size: 13px; color: var(--text-secondary); margin-top: 10px; font-family: monospace;">Aguardando início...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Lead Modal -->
+    <div id="leadModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Adicionar Novo Lead</h2>
+                <button id="closeModalBtn" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="leadForm">
+                    <input type="hidden" id="leadId">
+                    <div class="form-group">
+                        <label for="nome">Nome Completo *</label>
+                        <input type="text" id="nome" required placeholder="Ex: João Silva">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="telefone">WhatsApp *</label>
+                            <input type="text" id="telefone" required placeholder="Ex: 11999999999">
+                        </div>
+                        <div class="form-group">
+                            <label for="fonte">Fonte do Lead</label>
+                            <select id="fonte">
+                                <option value="Meta Ads">Meta Ads</option>
+                                <option value="YouTube">YouTube</option>
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="Indicação">Indicação</option>
+                                <option value="Orgânico">Orgânico</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="status">Status da Assinatura</label>
+                            <select id="status">
+                                <option value="Novo">Novo</option>
+                                <option value="Teste Grátis">Teste Grátis</option>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Vencido">Vencido</option>
+                                <option value="Inativo">Inativo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="plano">Plano de Interesse/Adquirido</label>
+                            <select id="plano">
+                                <option value="Nenhum">Nenhum</option>
+                                <option value="Mensal">Mensal</option>
+                                <option value="Trimestral">Trimestral</option>
+                                <option value="Semestral">Semestral</option>
+                                <option value="Anual">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dataContato">Data de Contato</label>
+                            <input type="date" id="dataContato">
+                        </div>
+                        <div class="form-group" id="vencimentoGroup">
+                            <label for="dataVencimento">Data de Vencimento</label>
+                            <input type="date" id="dataVencimento">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="observacoes">Observações (opcional)</label>
+                        <textarea id="observacoes" rows="3" placeholder="Insira qualquer detalhe extra..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="cancelBtn" class="btn-secondary">Cancelar</button>
+                        <button type="submit" id="saveLeadBtn" class="btn-primary">Salvar Lead</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Notificação aqui</div>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
