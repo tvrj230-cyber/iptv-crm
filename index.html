@@ -73,6 +73,15 @@
                             <!-- Cards go here -->
                         </div>
                     </div>
+
+                    <!-- Coluna: Leads Frios -->
+                    <div class="kanban-column" data-status="Leads Frios">
+                        <div class="column-header">
+                            <h3>Leads Frios <span class="badge" id="count-Leads Frios">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Leads Frios">
+                        </div>
+                    </div>
                     
                     <!-- Coluna: Teste Grátis -->
                     <div class="kanban-column" data-status="Teste Grátis">
@@ -158,6 +167,7 @@
                         <select id="broadcastTarget" style="width: 100%; max-width: 400px;">
                             <option value="Todos">Todos os Leads</option>
                             <option value="Novo">Apenas "Novo"</option>
+                            <option value="Leads Frios">Apenas "Leads Frios"</option>
                             <option value="Teste Grátis">Apenas "Teste Grátis"</option>
                             <option value="Ativo">Apenas "Ativo"</option>
                             <option value="Vencido">Apenas "Vencido"</option>
@@ -197,6 +207,18 @@
 
                     <div class="form-group">
                         <input type="file" id="csvFileInput" accept=".csv" style="display: block; width: 100%; border: 2px dashed var(--border-color); padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; color: var(--text-secondary); background: transparent;">
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="importStatusTarget" style="font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-secondary);">Para qual coluna deseja enviar esses leads?</label>
+                        <select id="importStatusTarget" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary);">
+                            <option value="Novo">Coluna: Novo (Padrão)</option>
+                            <option value="Leads Frios">Coluna: Leads Frios</option>
+                            <option value="Teste Grátis">Coluna: Teste Grátis</option>
+                            <option value="Ativo">Coluna: Ativo</option>
+                            <option value="Vencido">Coluna: Vencido</option>
+                            <option value="Inativo">Coluna: Inativo</option>
+                        </select>
                     </div>
 
                     <div class="form-group" style="margin-top: 20px;">
@@ -248,6 +270,7 @@
                             <label for="status">Status da Assinatura</label>
                             <select id="status">
                                 <option value="Novo">Novo</option>
+                                <option value="Leads Frios">Leads Frios</option>
                                 <option value="Teste Grátis">Teste Grátis</option>
                                 <option value="Ativo">Ativo</option>
                                 <option value="Vencido">Vencido</option>

@@ -30,6 +30,7 @@ function initApp() {
     const csvFileInput = document.getElementById('csvFileInput');
     const processCsvBtn = document.getElementById('processCsvBtn');
     const importResult = document.getElementById('importResult');
+    const importStatusTarget = document.getElementById('importStatusTarget');
 
     // Toast Helper
     function showToast(message, type = 'success') {
@@ -228,7 +229,7 @@ function initApp() {
     }
 
     function renderKanban() {
-        const statuses = ['Novo', 'Teste Grátis', 'Ativo', 'Vencido', 'Inativo'];
+        const statuses = ['Novo', 'Leads Frios', 'Teste Grátis', 'Ativo', 'Vencido', 'Inativo'];
         
         statuses.forEach(status => {
             const column = document.getElementById(`column-${status}`);
@@ -447,6 +448,8 @@ function initApp() {
 
                     const arrayToInsert = [];
                     const todayStr = getTodayString();
+                    
+                    const destinationStatus = importStatusTarget ? importStatusTarget.value : 'Novo';
 
                     for (let i = 1; i < lines.length; i++) {
                         const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, '')); // remove quoted strings if exist
@@ -463,7 +466,7 @@ function initApp() {
                             phone: cleanPhone,
                             whatsapp: cleanPhone,
                             fonte: 'Importação CSV',
-                            status: 'Novo',
+                            status: destinationStatus,
                             plano: 'Nenhum',
                             comprou: 'Pendente',
                             motivo: '',
