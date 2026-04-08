@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -24,8 +26,11 @@
                 <h2>IPTV CRM</h2>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-target="board-container">
-                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                <a href="#" class="nav-item active" data-target="dashboard-metrics-container">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-target="board-container">
+                    <i class="fa-solid fa-table-columns"></i> Kanban
                 </a>
                 <a href="#" class="nav-item" data-target="broadcast-container">
                     <i class="fa-solid fa-paper-plane"></i> Disparos
@@ -61,7 +66,72 @@
                 </div>
             </header>
 
-            <div class="board-container" id="board-container">
+            <div class="dashboard-container" id="dashboard-metrics-container">
+                <div class="dashboard-header">
+                    <h2>Visão Geral</h2>
+                    <p>Resumo de desempenho e leads</p>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background-color: rgba(59, 130, 246, 0.1); color: #3B82F6;">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <span class="kpi-label">Total de Leads</span>
+                            <span class="kpi-value" id="kpi-total-leads">0</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background-color: rgba(16, 185, 129, 0.1); color: #10B981;">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <span class="kpi-label">Novos Hoje</span>
+                            <span class="kpi-value" id="kpi-novos-hoje">0</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background-color: rgba(245, 158, 11, 0.1); color: #F59E0B;">
+                            <i class="fa-solid fa-crown"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <span class="kpi-label">Ativos Atuais</span>
+                            <span class="kpi-value" id="kpi-ativos">0</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background-color: rgba(139, 92, 246, 0.1); color: #8B5CF6;">
+                            <i class="fa-solid fa-percent"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <span class="kpi-label">Conversão (Geral)</span>
+                            <span class="kpi-value" id="kpi-conversao">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Volume de Leads por Dia (Últimos 14 Dias)</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="leadsPerDayChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Melhores Fontes de Entrada</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="leadsBySourceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board-container" id="board-container" style="display: none;">
                 <!-- Kanban Board -->
                 <div class="kanban-board">
                     <!-- Coluna: Novo -->

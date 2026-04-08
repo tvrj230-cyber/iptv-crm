@@ -2,6 +2,8 @@
 let leads = [];
 let dbClient = null;
 let broadcastIsRunning = false;
+let leadsPerDayChartInstance = null;
+let leadsBySourceChartInstance = null;
 
 function initApp() {
     // DOM Elements
@@ -76,12 +78,14 @@ function initApp() {
                 const targetId = item.getAttribute('data-target');
                 if(targetId) {
                     const board = document.getElementById('board-container');
+                    const dashMetrics = document.getElementById('dashboard-metrics-container');
                     const broadcast = document.getElementById('broadcast-container');
                     const followup = document.getElementById('followup-container');
                     const importCont = document.getElementById('import-container');
                     const targetEl = document.getElementById(targetId);
                     
                     if(board) board.style.display = 'none';
+                    if(dashMetrics) dashMetrics.style.display = 'none';
                     if(broadcast) broadcast.style.display = 'none';
                     if(followup) followup.style.display = 'none';
                     if(importCont) importCont.style.display = 'none';
@@ -222,6 +226,7 @@ function initApp() {
             leads = data || [];
             renderKanban();
             renderFollowUps();
+            renderDashboardMetrics();
         } catch (error) {
             console.error(error);
             showToast(`Erro ao carregar: ${error.message}`, 'error');
@@ -334,6 +339,121 @@ function initApp() {
         if(document.getElementById('count-frios')) document.getElementById('count-frios').innerText = numFrios;
         if(document.getElementById('count-resgate')) document.getElementById('count-resgate').innerText = numResgate;
         if(document.getElementById('count-vencimento')) document.getElementById('count-vencimento').innerText = numVencimento;
+    }
+
+    function renderDashboardMetrics() {
+        if (!window.Chart) return; // Prevent errors before Chart.js loads
+
+        // --- 1. Calcular KPIs ---
+        const totalLeads = leads.length;
+        const ativos = leads.filter(l => l.status === 'Ativo').length;
+        const compraram = leads.filter(l => l.comprou === 'Sim').length;
+        
+        let novosHoje = 0;
+        const todayStr = getTodayString();
+        leads.forEach(l => {
+            if (l.data_contato === todayStr) novosHoje++;
+        });
+
+        const convRate = totalLeads > 0 ? ((compraram / totalLeads) * 100).toFixed(1) : 0;
+
+        if (document.getElementById('kpi-total-leads')) document.getElementById('kpi-total-leads').innerText = totalLeads;
+        if (document.getElementById('kpi-novos-hoje')) document.getElementById('kpi-novos-hoje').innerText = novosHoje;
+        if (document.getElementById('kpi-ativos')) document.getElementById('kpi-ativos').innerText = ativos;
+        if (document.getElementById('kpi-conversao')) document.getElementById('kpi-conversao').innerText = `${convRate}%`;
+
+        // --- 2. Chart: Volume de Leads por Dia (Últimos 14 dias) ---
+        const ctxPerDay = document.getElementById('leadsPerDayChart');
+        if (ctxPerDay) {
+            // Generates last 14 dates to ensure empty days appear
+            const datesMap = {};
+            for(let i=13; i>=0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const isoStr = d.toISOString().split('T')[0];
+                datesMap[isoStr] = 0;
+            }
+
+            leads.forEach(l => {
+                if(l.data_contato && datesMap[l.data_contato] !== undefined) {
+                    datesMap[l.data_contato]++;
+                }
+            });
+
+            const labelsDay = Object.keys(datesMap).map(d => {
+                const parts = d.split('-');
+                return `${parts[2]}/${parts[1]}`;
+            });
+            const dataDay = Object.values(datesMap);
+
+            if (leadsPerDayChartInstance) leadsPerDayChartInstance.destroy();
+
+            leadsPerDayChartInstance = new Chart(ctxPerDay, {
+                type: 'line',
+                data: {
+                    labels: labelsDay,
+                    datasets: [{
+                        label: 'Novos Leads',
+                        data: dataDay,
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#2A3143' }, ticks: { stepSize: 1 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- 3. Chart: Melhores Fontes (Doughnut) ---
+        const ctxSource = document.getElementById('leadsBySourceChart');
+        if (ctxSource) {
+            const sourceMap = {};
+            leads.forEach(l => {
+                const fonte = l.fonte || 'Desconhecido';
+                sourceMap[fonte] = (sourceMap[fonte] || 0) + 1;
+            });
+
+            // Sort sources by amount
+            const sortedSources = Object.entries(sourceMap).sort((a,b) => b[1] - a[1]);
+            const sourceLabels = sortedSources.map(s => s[0]);
+            const sourceData = sortedSources.map(s => s[1]);
+
+            if (leadsBySourceChartInstance) leadsBySourceChartInstance.destroy();
+
+            leadsBySourceChartInstance = new Chart(ctxSource, {
+                type: 'doughnut',
+                data: {
+                    labels: sourceLabels,
+                    datasets: [{
+                        label: 'Total de Leads',
+                        data: sourceData,
+                        backgroundColor: [
+                            '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#EC4899', '#6B7280'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#F3F4F6' } }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
     }
 
     function createFollowUpCard(lead, infoMsg, color) {
