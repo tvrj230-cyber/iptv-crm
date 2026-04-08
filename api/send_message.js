@@ -22,8 +22,7 @@ export default async function handler(req, res) {
             instance: INSTANCE_ID,
             delayMin: 4,
             delayMax: 8,
-            info: "crm-ipvt-dispatch",
-            scheduled_for: 1,
+            info: `crm-ipvt-dispatch-${Date.now()}`,
             messages: [
                 {
                     number: phone, // "5511999999999"
