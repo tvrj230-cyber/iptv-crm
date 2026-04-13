@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     }
 
     // req.body.messages should be an array like: [ { phone: '123', message: 'Hello' }, ... ]
-    const { messages } = req.body;
+    const { messages, delayMin, delayMax } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Lista de mensagens inválida ou vazia.' });
@@ -28,8 +28,8 @@ export default async function handler(req, res) {
 
         const payload = {
             instance: INSTANCE_ID,
-            delayMin: 15,
-            delayMax: 30, // Entre 15s e 30s de intervalo pra evitar banimento com a fila massiva
+            delayMin: delayMin || 15, // Se não enviarem, assume 15s
+            delayMax: delayMax || 30, // Se não enviarem, assume 30s
             info: `crm-broadcast-dispatch-${Date.now()}`,
             messages: uazapiMessages,
             token: API_KEY

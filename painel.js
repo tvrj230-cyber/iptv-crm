@@ -695,12 +695,15 @@ function initApp() {
                 message: rawMsg
             }));
 
+            const delayInput = document.getElementById('quickSendDelay') ? document.getElementById('quickSendDelay').value : '15-30';
+            const [delayMin, delayMax] = delayInput.split('-').map(Number);
+
             try {
                 const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/broadcast' : '/api/broadcast';
                 const res = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: payloadArr })
+                    body: JSON.stringify({ messages: payloadArr, delayMin, delayMax })
                 });
 
                 if (!res.ok) throw new Error('Falha na API: ' + await res.text());
@@ -776,6 +779,9 @@ function initApp() {
                 return;
             }
 
+            const delayInput = document.getElementById('broadcastDelay') ? document.getElementById('broadcastDelay').value : '15-30';
+            const [delayMin, delayMax] = delayInput.split('-').map(Number);
+
             try {
                 // Call API Em Lote
                 const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/broadcast' : '/api/broadcast';
@@ -783,7 +789,7 @@ function initApp() {
                 const res = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: payloadArr })
+                    body: JSON.stringify({ messages: payloadArr, delayMin, delayMax })
                 });
 
                 if (!res.ok) {
