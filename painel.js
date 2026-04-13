@@ -82,6 +82,7 @@ function initApp() {
                     const broadcast = document.getElementById('broadcast-container');
                     const followup = document.getElementById('followup-container');
                     const importCont = document.getElementById('import-container');
+                    const quickSendCont = document.getElementById('quick-send-container');
                     const targetEl = document.getElementById(targetId);
                     
                     if(board) board.style.display = 'none';
@@ -89,6 +90,7 @@ function initApp() {
                     if(broadcast) broadcast.style.display = 'none';
                     if(followup) followup.style.display = 'none';
                     if(importCont) importCont.style.display = 'none';
+                    if(quickSendCont) quickSendCont.style.display = 'none';
                     
                     if(targetEl) targetEl.style.display = 'block';
                 }
@@ -630,11 +632,100 @@ function initApp() {
         });
     }
 
+    // --- QUICK SEND (AVULSO) LOGIC ---
+    const quickSendNumbers = document.getElementById('quickSendNumbers');
+    const quickSendMessage = document.getElementById('quickSendMessage');
+    const countValidNumbers = document.getElementById('countValidNumbers');
+    const countInvalidNumbers = document.getElementById('countInvalidNumbers');
+    const validNumbersList = document.getElementById('validNumbersList');
+    const invalidNumbersList = document.getElementById('invalidNumbersList');
+    const startQuickSendBtn = document.getElementById('startQuickSendBtn');
+
+    let validNumbersArray = [];
+
+    if (quickSendNumbers) {
+        quickSendNumbers.addEventListener('input', () => {
+            const text = quickSendNumbers.value;
+            // Split by comma, newline or space
+            const rawItems = text.split(/[\n,\s]+/).filter(i => i.trim() !== '');
+            
+            validNumbersArray = [];
+            const invalidNumbersArray = [];
+
+            rawItems.forEach(item => {
+                const clean = item.replace(/\D/g, '');
+                if (clean.length >= 10 && clean.length <= 15) {
+                    validNumbersArray.push(clean);
+                } else {
+                    invalidNumbersArray.push(item);
+                }
+            });
+
+            // Deduplicate valid
+            validNumbersArray = [...new Set(validNumbersArray)];
+
+            if(countValidNumbers) countValidNumbers.innerText = validNumbersArray.length;
+            if(countInvalidNumbers) countInvalidNumbers.innerText = invalidNumbersArray.length;
+            
+            if(validNumbersList) validNumbersList.innerHTML = validNumbersArray.join('<br>') || 'Nenhum';
+            if(invalidNumbersList) invalidNumbersList.innerHTML = invalidNumbersArray.join('<br>') || 'Nenhum';
+        });
+    }
+
+    if (startQuickSendBtn) {
+        startQuickSendBtn.addEventListener('click', async () => {
+            if (validNumbersArray.length === 0) {
+                showToast('Não há números válidos para envio.', 'error');
+                return;
+            }
+
+            const rawMsg = quickSendMessage ? quickSendMessage.value.trim() : '';
+            if (!rawMsg) {
+                showToast('A mensagem não pode estar vazia.', 'error');
+                return;
+            }
+
+            if (!confirm(`Deseja enviar a mensagem para os ${validNumbersArray.length} números válidos da lista? (Eles serão processados em 2º plano)`)) return;
+
+            startQuickSendBtn.disabled = true;
+            startQuickSendBtn.innerText = 'Enviando p/ Fila...';
+
+            const payloadArr = validNumbersArray.map(phone => ({
+                phone: phone,
+                message: rawMsg
+            }));
+
+            try {
+                const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/broadcast' : '/api/broadcast';
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: payloadArr })
+                });
+
+                if (!res.ok) throw new Error('Falha na API: ' + await res.text());
+
+                showToast(`Sucesso! ${validNumbersArray.length} contatos postados na fila de disparo.`, 'success');
+                if(quickSendNumbers) quickSendNumbers.value = '';
+                if(validNumbersList) validNumbersList.innerHTML = '';
+                if(invalidNumbersList) invalidNumbersList.innerHTML = '';
+                if(countValidNumbers) countValidNumbers.innerText = '0';
+                if(countInvalidNumbers) countInvalidNumbers.innerText = '0';
+                validNumbersArray = [];
+
+            } catch(e) {
+                console.error(e);
+                showToast(`Erro ao disparar: ${e.message}`, 'error');
+            } finally {
+                startQuickSendBtn.disabled = false;
+                startQuickSendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar para Válidos';
+            }
+        });
+    }
+
     // --- BROADCAST LOGIC ---
     if (startBroadcastBtn) {
         startBroadcastBtn.addEventListener('click', async () => {
-            if (broadcastIsRunning) return;
-
             const target = broadcastTarget ? broadcastTarget.value : 'Todos';
             let rawMessage = broadcastMessage ? broadcastMessage.value.trim() : '';
 
@@ -654,86 +745,65 @@ function initApp() {
                 return;
             }
 
-            if (!confirm(`Sério que deseja iniciar o disparo para ${targetLeads.length} leads?`)) return;
+            if (!confirm(`Sério que deseja enviar as mensagens para ${targetLeads.length} leads? Elas serão agendadas em segundo plano e você não precisa deixar a aba aberta.`)) return;
 
             // Start UI
-            broadcastIsRunning = true;
-            if(startBroadcastBtn) startBroadcastBtn.style.display = 'none';
-            if(stopBroadcastBtn) stopBroadcastBtn.style.display = 'inline-block';
-            if(broadcastProgressArea) broadcastProgressArea.style.display = 'block';
+            if(startBroadcastBtn) {
+                startBroadcastBtn.disabled = true;
+                startBroadcastBtn.innerText = 'Preparando pacote...';
+            }
+            if(broadcastProgressArea) broadcastProgressArea.style.display = 'none';
 
-            let count = 0;
-            const total = targetLeads.length;
-
-            for (let i = 0; i < total; i++) {
-                if (!broadcastIsRunning) {
-                    if(broadcastLog) broadcastLog.innerText = 'Disparo abortado pelo usuário.';
-                    break;
-                }
-
-                const lead = targetLeads[i];
+            // Montar array de mensagens
+            const payloadArr = [];
+            targetLeads.forEach(lead => {
                 const leadName = lead.nome || lead.name || lead.pushName || 'Amigo(a)';
                 const leadPhone = lead.telefone || lead.phone || lead.whatsapp || '';
 
-                if (!leadPhone) {
-                    if(broadcastLog) broadcastLog.innerText = `Pulando contato sem número... (${leadName})`;
-                    continue;
+                if (leadPhone) {
+                    const cleanPhone = leadPhone.replace(/\D/g, '');
+                    const personalizedMessage = rawMessage.replace(/\{\{nome\}\}/gi, leadName.split(' ')[0]);
+                    payloadArr.push({ phone: cleanPhone, message: personalizedMessage });
                 }
+            });
 
-                // Parse message variables
-                const personalizedMessage = rawMessage.replace(/\{\{nome\}\}/gi, leadName.split(' ')[0]);
-
-                count++;
-                if(broadcastProgressBar) broadcastProgressBar.style.width = `${(count / total) * 100}%`;
-                if(broadcastStatusText) broadcastStatusText.innerText = `Enviando... (${count}/${total})`;
-                if(broadcastLog) broadcastLog.innerText = `Enviando para ${leadName} (${leadPhone}). Aguarde...`;
-
-                try {
-                    // Call Vercel API
-                    const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/send_message' : '/api/send_message';
-
-                    const res = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone: leadPhone, message: personalizedMessage })
-                    });
-                    
-                    if (!res.ok) {
-                        const err = await res.text();
-                        console.error("Vercel API Erro:", err);
-                    }
-                } catch (err) {
-                    console.error("Fetch falhou:", err);
+            if (payloadArr.length === 0) {
+                showToast('Nenhum número extraído para os leads selecionados.', 'error');
+                if(startBroadcastBtn) {
+                    startBroadcastBtn.disabled = false;
+                    startBroadcastBtn.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Disparo';
                 }
-
-                if (i < total - 1) {
-                    // Wait 90 seconds (90000 ms) before next IF not last
-                    let timeRemaining = 90;
-                    if(broadcastLog) broadcastLog.innerText = `Sucesso para ${leadName}! Aguardando 90 segundos...`;
-                    
-                    for (let sec = 0; sec < 90; sec++) {
-                        if (!broadcastIsRunning) break;
-                        await new Promise(r => setTimeout(r, 1000));
-                        timeRemaining--;
-                        if (timeRemaining % 5 === 0 && broadcastLog) {
-                            broadcastLog.innerText = `Sucesso! Faltam ${timeRemaining}s para disparar próximo...`;
-                        }
-                    }
-                }
+                return;
             }
 
-            // Finish UI
-            broadcastIsRunning = false;
-            // Refetch to reset the leads queue to default if we reduced it
-            fetchLeads();
-            
-            if(startBroadcastBtn) startBroadcastBtn.style.display = 'inline-block';
-            if(stopBroadcastBtn) stopBroadcastBtn.style.display = 'none';
-            
-            if (count === total) {
-                if(broadcastStatusText) broadcastStatusText.innerText = `Concluído! (${count}/${total})`;
-                if(broadcastLog) broadcastLog.innerText = 'Disparo finalizado com sucesso.';
-                showToast('Todos os disparos foram realizados!', 'success');
+            try {
+                // Call API Em Lote
+                const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/broadcast' : '/api/broadcast';
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: payloadArr })
+                });
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(errText);
+                }
+
+                showToast(`Sucesso! Lote de ${payloadArr.length} mensagens inserido na Fila UAZAPI. Agora elas dispararão gradualmente em segundo plano. Podes fechar a aba!`, 'success');
+                
+            } catch (err) {
+                console.error("Lote falhou:", err);
+                showToast(`Erro na API Uazapi: ${err.message}`, 'error');
+            } finally {
+                if(startBroadcastBtn) {
+                    startBroadcastBtn.disabled = false;
+                    startBroadcastBtn.innerHTML = '<i class="fa-solid fa-check"></i> Disparo Agendado';
+                    setTimeout(() => {
+                        startBroadcastBtn.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Novo Disparo';
+                    }, 5000);
+                }
             }
         });
     }
