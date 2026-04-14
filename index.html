@@ -117,4 +117,451 @@
                             <i class="fa-solid fa-percent"></i>
                         </div>
                         <div class="kpi-data">
-                            
+                            <span class="kpi-label">Conversão (Geral)</span>
+                            <span class="kpi-value" id="kpi-conversao">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Volume de Leads por Dia (Últimos 14 Dias)</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="leadsPerDayChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Melhores Fontes de Entrada</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="leadsBySourceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Editor View -->
+            <div class="messages-container" id="messages-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2>Gestão de Mensagens</h2>
+                        <p>Crie e edite as mensagens que o seu CRM e robô utilizarão</p>
+                    </div>
+                    <button id="addMessageBtn" class="btn-primary">
+                        <i class="fa-solid fa-plus"></i> Nova Mensagem
+                    </button>
+                </div>
+                
+                <div style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid #8B5CF6; padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                    <p style="font-size: 13px; color: var(--text-primary);">Para o robô de acompanhamento de vendas (Cron) usar uma mensagem automaticamente, o campo <strong>Nome (Chave)</strong> deve ser exatamente um destes: <br><strong>FUNIL-30M</strong>, <strong>FUNIL-FIM</strong>, <strong>FUNIL-DIA1</strong>, <strong>FUNIL-DIA3</strong>, ou <strong>FUNIL-DIA7</strong>.</p>
+                </div>
+
+                <div class="kpi-grid" id="messagesGrid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                    <!-- Cartões de mensagens são inseridos aqui via JS -->
+                </div>
+            </div>
+
+            <div class="board-container" id="board-container" style="display: none;">
+                <!-- Kanban Board -->
+                <div class="kanban-board">
+                    <!-- Coluna: Novo -->
+                    <div class="kanban-column" data-status="Novo">
+                        <div class="column-header">
+                            <h3>Novo <span class="badge" id="count-Novo">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Novo">
+                            <!-- Cards go here -->
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Leads Frios -->
+                    <div class="kanban-column" data-status="Leads Frios">
+                        <div class="column-header">
+                            <h3>Leads Frios <span class="badge" id="count-Leads Frios">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Leads Frios">
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna: Teste Grátis -->
+                    <div class="kanban-column" data-status="Teste Grátis">
+                        <div class="column-header">
+                            <h3>Teste Grátis <span class="badge" id="count-Teste Grátis">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Teste Grátis">
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Ativo -->
+                    <div class="kanban-column" data-status="Ativo">
+                        <div class="column-header">
+                            <h3>Ativo <span class="badge" id="count-Ativo">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Ativo">
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Vencido -->
+                    <div class="kanban-column" data-status="Vencido">
+                        <div class="column-header">
+                            <h3>Vencido <span class="badge" id="count-Vencido">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Vencido">
+                        </div>
+                    </div>
+
+                    <!-- Coluna: Inativo -->
+                    <div class="kanban-column" data-status="Inativo">
+                        <div class="column-header">
+                            <h3>Inativo <span class="badge" id="count-Inativo">0</span></h3>
+                        </div>
+                        <div class="kanban-cards" id="column-Inativo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Follow-up View -->
+            <div class="board-container" id="followup-container" style="display: none;">
+                <div class="kanban-board">
+                    <!-- Coluna: Leads Frios -->
+                    <div class="kanban-column" style="width: 32%; min-width: unset;">
+                        <div class="column-header">
+                            <h3 style="color: #60A5FA;"><i class="fa-solid fa-snowflake"></i> Leads Frios (+7d) <span class="badge" id="count-frios">0</span></h3>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Contatados há mais de 1 semana sem compra ("Novo")</p>
+                        </div>
+                        <div class="kanban-cards" id="followup-frios"></div>
+                    </div>
+                    
+                    <!-- Coluna: Resgate de Teste -->
+                    <div class="kanban-column" style="width: 32%; min-width: unset;">
+                        <div class="column-header">
+                            <h3 style="color: #F59E0B;"><i class="fa-solid fa-rotate-left"></i> Resgate de Teste <span class="badge" id="count-resgate">0</span></h3>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Teste Grátis feito há 1 dia ou mais (Não comprou)</p>
+                        </div>
+                        <div class="kanban-cards" id="followup-resgate"></div>
+                    </div>
+
+                    <!-- Coluna: Vencimentos Hoje -->
+                    <div class="kanban-column" style="width: 32%; min-width: unset;">
+                        <div class="column-header">
+                            <h3 style="color: #EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> Vencimentos <span class="badge" id="count-vencimento">0</span></h3>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Ativos que vencem entre hoje e daqui 3 dias</p>
+                        </div>
+                        <div class="kanban-cards" id="followup-vencimento"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broadcast View -->
+            <div class="broadcast-container" id="broadcast-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="broadcast-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 24px; border-radius: var(--radius-lg);">
+                    <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Disparo em Massa Automático</h2>
+                    
+                    <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--status-teste); padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                        <p style="font-size: 14px; color: var(--text-primary);"><strong style="color: var(--status-teste)">IMPORTANTE:</strong> Mantenha esta aba do navegador aberta enquanto o disparo estiver ocorrendo. O sistema fará pausas de 90 segundos entre as mensagens para evitar bloqueios do WhatsApp.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Para quem enviar?</label>
+                        <select id="broadcastTarget" style="width: 100%; max-width: 400px;">
+                            <option value="Todos">Todos os Leads</option>
+                            <option value="Novo">Apenas "Novo"</option>
+                            <option value="Leads Frios">Apenas "Leads Frios"</option>
+                            <option value="Teste Grátis">Apenas "Teste Grátis"</option>
+                            <option value="Ativo">Apenas "Ativo"</option>
+                            <option value="Vencido">Apenas "Vencido"</option>
+                            <option value="Inativo">Apenas "Inativo"</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sua Mensagem</label>
+                        <textarea id="broadcastMessage" rows="6" style="width: 100%; max-width: 600px;" placeholder="Olá {{nome}}! Tudo bem? Temos uma novidade incrível..."></textarea>
+                        <small style="color: var(--text-muted); margin-top: 5px;">Dica: Use <strong>{{nome}}</strong> para chamar o lead pelo nome salvo.</small>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Intervalo entre os Envios</label>
+                        <select id="broadcastDelay" style="width: 100%; max-width: 400px;">
+                            <option value="15-30">Padrão (15 a 30 seg)</option>
+                            <option value="30-60">Seguro (30 a 60 seg)</option>
+                            <option value="60-90">Longo (60 a 90 seg)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <button id="startBroadcastBtn" class="btn-primary" style="background-color: #25D366; color: #111; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);"><i class="fa-solid fa-play"></i> Iniciar Disparo</button>
+                        <button id="stopBroadcastBtn" class="btn-secondary" style="display: none; border-color: var(--status-vencido); color: var(--status-vencido);"><i class="fa-solid fa-stop"></i> Pausar Disparo</button>
+                    </div>
+
+                    <div id="broadcastProgressArea" style="display: none; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                        <h3 id="broadcastStatusText" style="margin-bottom: 5px;">Carregando...</h3>
+                        <div style="background: var(--bg-main); border-radius: 10px; height: 12px; width: 100%; max-width: 600px; margin: 10px 0; overflow: hidden; border: 1px solid var(--border-color);">
+                            <div id="broadcastProgressBar" style="background: #25D366; height: 12px; width: 0%; transition: width 0.5s;"></div>
+                        </div>
+                        <p id="broadcastLog" style="font-size: 13px; color: var(--text-secondary); margin-top: 10px; font-family: monospace;">Aguardando início...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import View -->
+            <div class="import-container" id="import-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="import-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 24px; border-radius: var(--radius-lg); max-width: 600px;">
+                    <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-file-csv" style="color: #60A5FA;"></i> Importar Leads do Excel</h2>
+                    
+                    <div style="background: rgba(96, 165, 250, 0.1); border-left: 4px solid #60A5FA; padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                        <p style="font-size: 14px; color: var(--text-primary);">Carregue uma planilha <strong>.csv</strong>. O sistema irá buscar as colunas com a palavra <strong>"Nome"</strong> e <strong>"Telefone"</strong> (ou variáveis) automaticamente na primeira linha para puxar seus contatos para a coluna "Novo".</p>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="file" id="csvFileInput" accept=".csv" style="display: block; width: 100%; border: 2px dashed var(--border-color); padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; color: var(--text-secondary); background: transparent;">
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="importStatusTarget" style="font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-secondary);">Para qual coluna deseja enviar esses leads?</label>
+                        <select id="importStatusTarget" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary);">
+                            <option value="Novo">Coluna: Novo (Padrão)</option>
+                            <option value="Leads Frios">Coluna: Leads Frios</option>
+                            <option value="Teste Grátis">Coluna: Teste Grátis</option>
+                            <option value="Ativo">Coluna: Ativo</option>
+                            <option value="Vencido">Coluna: Vencido</option>
+                            <option value="Inativo">Coluna: Inativo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <button id="processCsvBtn" class="btn-primary" style="width: 100%; justify-content: center;"><i class="fa-solid fa-cloud-arrow-up"></i> Importar e Salvar Leads</button>
+                    </div>
+
+                    <div id="importResult" style="display: none; margin-top: 20px; padding: 15px; border-radius: 8px; font-size: 14px;">
+                        <!-- Results dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Send View -->
+            <div class="quick-send-container" id="quick-send-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="broadcast-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 24px; border-radius: var(--radius-lg); max-width: 800px;">
+                    <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-bolt" style="color: #F59E0B;"></i> Disparo Avulso (Rápido)</h2>
+                    
+                    <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid #F59E0B; padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                        <p style="font-size: 14px; color: var(--text-primary);">Cole uma lista de números abaixo (separados por linha ou vírgula). O sistema separará automaticamente os válidos dos inválidos antes do envio.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sua Mensagem</label>
+                        <textarea id="quickSendMessage" rows="5" style="width: 100%;" placeholder="Olá! Tudo bem? Temos uma oferta..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Números de Destino</label>
+                        <textarea id="quickSendNumbers" rows="8" style="width: 100%; font-family: monospace;" placeholder="Ex: 5511999999999&#10;5511888888888"></textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Intervalo entre os Envios</label>
+                        <select id="quickSendDelay" style="width: 100%; max-width: 400px;">
+                            <option value="15-30">Rápido (15 a 30 seg)</option>
+                            <option value="30-60">Médio (30 a 60 seg)</option>
+                            <option value="60-90">Longo (60 a 90 seg)</option>
+                        </select>
+                    </div>
+
+                    <div class="quick-send-stats" style="display: flex; gap: 20px; margin-top: 15px;">
+                        <div style="flex: 1; padding: 15px; border-radius: 8px; background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.3);">
+                            <h4 style="color: #25D366; margin-bottom: 10px; font-size: 14px;">Válidos (<span id="countValidNumbers">0</span>)</h4>
+                            <div id="validNumbersList" style="font-size: 12px; color: var(--text-secondary); max-height: 100px; overflow-y: auto; word-break: break-all;"></div>
+                        </div>
+                        <div style="flex: 1; padding: 15px; border-radius: 8px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.3);">
+                            <h4 style="color: #EF4444; margin-bottom: 10px; font-size: 14px;">Inválidos (<span id="countInvalidNumbers">0</span>)</h4>
+                            <div id="invalidNumbersList" style="font-size: 12px; color: var(--text-secondary); max-height: 100px; overflow-y: auto; word-break: break-all;"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 25px;">
+                        <button id="startQuickSendBtn" class="btn-primary" style="background-color: #F59E0B; color: #111; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); width: 100%; justify-content: center;"><i class="fa-solid fa-paper-plane"></i> Enviar para Válidos</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Manager / Funnel View -->
+            <div class="test-manager-container" id="test-manager-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="broadcast-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 24px; border-radius: var(--radius-lg); max-width: 800px;">
+                    <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-robot" style="color: #8B5CF6;"></i> Funil de Vendas e Testes (Robô)</h2>
+                    
+                    <div style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid #8B5CF6; padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                        <p style="font-size: 14px; color: var(--text-primary);">Acompanhe e ative testes. Uma vez iniciado, o robô assume a comunicação com o cliente: <strong>30 min, fim do teste, 1 dia, 3 dias e 7 dias</strong>.</p>
+                        <p style="font-size: 12px; margin-top: 5px; color: #8B5CF6;"><i class="fa-solid fa-link"></i> Endpoint P/ Cron: <code>/api/cron_followup</code></p>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-bottom: 25px;">
+                        <select id="funnelSelectLead" style="flex: 2; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary);">
+                            <option value="">-- Carregando Leads Pendentes... --</option>
+                        </select>
+                        <select id="funnelTestDuration" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary);">
+                            <option value="1">1 Hora</option>
+                            <option value="2">2 Horas</option>
+                            <option value="3">3 Horas</option>
+                        </select>
+                        <button id="startFunnelBtn" class="btn-primary" style="background-color: #8B5CF6; color: white;"><i class="fa-solid fa-play"></i> Iniciar Máquina</button>
+                    </div>
+
+                    <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 16px;">Testes Rodando na Máquina</h3>
+                    <div id="funnelActiveList" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- List of active funnel leads will populate here -->
+                        <div style="padding: 15px; border-radius: 6px; border: 1px dashed var(--border-color); text-align: center; color: var(--text-muted);">Aguardando...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Messages Modal -->
+    <div id="messageModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Configurar Mensagem</h2>
+                <button id="closeMessageModalBtn" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="messageForm">
+                    <input type="hidden" id="messageId">
+                    <div class="form-group">
+                        <label for="msgChave">Nome da Mensagem (Chave) *</label>
+                        <input type="text" id="msgChave" required placeholder="Ex: FUNIL-30M">
+                    </div>
+                    
+                    <div class="form-group" style="position: relative;">
+                        <label for="msgTexto">Corpo da Mensagem *</label>
+                        <textarea id="msgTexto" rows="6" required placeholder="Olá {{nome}}, tudo bem?"></textarea>
+                        <small style="color: var(--text-muted); margin-top: 5px;">Use <strong>{{nome}}</strong> em qualquer lugar para chamar o cliente pelo nome.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="msgMidia">URL da Mídia Externa (Imagem/Vídeo - opcional)</label>
+                        <input type="url" id="msgMidia" placeholder="Ex: https://i.imgur.com/foto.jpg">
+                        <small style="color: var(--text-muted); margin-top: 5px;">Cole um link direto para uma foto ou vídeo para ser enviado junto com o texto.</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="deleteMessageBtn" class="btn-secondary" style="display: none; border-color: #EF4444; color: #EF4444; margin-right: auto;"><i class="fa-solid fa-trash"></i> Apagar</button>
+                        <button type="button" id="cancelMessageBtn" class="btn-secondary">Cancelar</button>
+                        <button type="submit" id="saveMessageBtn" class="btn-primary" style="background-color: #8B5CF6; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">Salvar Mensagem</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Lead Modal -->
+    <div id="leadModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Adicionar Novo Lead</h2>
+                <button id="closeModalBtn" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="leadForm">
+                    <input type="hidden" id="leadId">
+                    <div class="form-group">
+                        <label for="nome">Nome Completo *</label>
+                        <input type="text" id="nome" required placeholder="Ex: João Silva">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="telefone">WhatsApp *</label>
+                            <input type="text" id="telefone" required placeholder="Ex: 11999999999">
+                        </div>
+                        <div class="form-group">
+                            <label for="fonte">Fonte do Lead</label>
+                            <select id="fonte">
+                                <option value="Meta Ads">Meta Ads</option>
+                                <option value="YouTube">YouTube</option>
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="Indicação">Indicação</option>
+                                <option value="Orgânico">Orgânico</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="status">Status da Assinatura</label>
+                            <select id="status">
+                                <option value="Novo">Novo</option>
+                                <option value="Leads Frios">Leads Frios</option>
+                                <option value="Teste Grátis">Teste Grátis</option>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Vencido">Vencido</option>
+                                <option value="Inativo">Inativo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="plano">Plano de Interesse/Adquirido</label>
+                            <select id="plano">
+                                <option value="Nenhum">Nenhum</option>
+                                <option value="Mensal">Mensal</option>
+                                <option value="Trimestral">Trimestral</option>
+                                <option value="Semestral">Semestral</option>
+                                <option value="Anual">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dataContato">Data de Contato</label>
+                            <input type="date" id="dataContato">
+                        </div>
+                        <div class="form-group" id="vencimentoGroup">
+                            <label for="dataVencimento">Data de Vencimento</label>
+                            <input type="date" id="dataVencimento">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="comprou">Comprou?</label>
+                            <select id="comprou">
+                                <option value="Pendente">Pendente (Em negociação)</option>
+                                <option value="Sim">Sim, Comprou</option>
+                                <option value="Não">Não</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="motivo">Motivo (se não comprou)</label>
+                            <select id="motivo">
+                                <option value="">Nenhum/Não se aplica</option>
+                                <option value="Preço">Achou Caro / Preço</option>
+                                <option value="Sem Dinheiro">Sem Dinheiro Hoje</option>
+                                <option value="Travou">Travou o teste</option>
+                                <option value="Sumiu">Vácuo (Parou de responder)</option>
+                                <option value="Outro">Outro motivo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="observacoes">Observações (opcional)</label>
+                        <textarea id="observacoes" rows="3" placeholder="Insira qualquer detalhe extra..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="deleteLeadBtn" class="btn-secondary" style="display: none; border-color: #EF4444; color: #EF4444; margin-right: auto;"><i class="fa-solid fa-trash"></i> Excluir</button>
+                        <button type="button" id="cancelBtn" class="btn-secondary">Cancelar</button>
+                        <button type="submit" id="saveLeadBtn" class="btn-primary">Salvar Lead</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Notificação aqui</div>
+
+    <!-- App Logic -->
+    <script src="painel.js"></script>
+</body>
+</html>
