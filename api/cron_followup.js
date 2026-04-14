@@ -2,24 +2,45 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
-    // Vercel CRON or cron-job.org usually sends a GET request.
-    // Allow both GET and POST for flexibility.
-
-    // 1. Setup Supabase Client
     const supabaseUrl = process.env.SUPABASE_URL || 'https://ugsqqqswdnkhzzlcghcv.supabase.co';
-    const supabaseKey = process.env.SUPABASE_KEY || 'sb_publishable_zcrh64N1Jb5bSn-Hs21d1A_bSp0_K9L'; // Pode ser ANON KEY se não houver RLS impedindo leitura/escrita
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey; // Ideal usar a service_role key no backend
+    const supabaseKey = process.env.SUPABASE_KEY || 'sb_publishable_zcrh64N1Jb5bSn-Hs21d1A_bSp0_K9L';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey; 
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 2. Setup UAZAPI
     const UAZAPI_URL = process.env.UAZAPI_URL || 'https://flixstreaming.uazapi.com';
     const INSTANCE_ID = process.env.UAZAPI_INSTANCE || '56mMDx';
     const API_KEY = process.env.UAZAPI_TOKEN || '10b97f21-ae5d-43fd-b5f8-c57499c98537';
 
     try {
-        // 3. Buscar leads elegíveis para o funil de teste
-        // Regras: Tem "inicio_teste", não comprou (Sim/Não) e não está Ativo/Inativo.
+        // Buscar mensagens dinâmicas cadastradas no CRM
+        let funnelTemplates = {};
+        const { data: mensagensDb, error: errMsg } = await supabase.from('mensagens').select('*');
+        if (!errMsg && mensagensDb) {
+            mensagensDb.forEach(m => {
+                funnelTemplates[m.chave.toUpperCase()] = {
+                    text: m.texto,
+                    url: m.midia_url
+                };
+            });
+        }
+
+        // Helper substituto inteligente de nomes e fallbacks
+        function getMessageObj(chaveTemplate, defaultText, nameToSay) {
+            const template = funnelTemplates[chaveTemplate];
+            let text = defaultText;
+            let url = null;
+            
+            if (template) {
+                text = template.text.replace(/\{\{nome\}\}/gi, nameToSay);
+                url = template.url ? template.url.trim() : null;
+            } else {
+                text = text.replace(/\{\{nome\}\}/gi, nameToSay);
+            }
+            return { text, url };
+        }
+
+        // Buscar leads
         const { data: leads, error } = await supabase
             .from('leads')
             .select('*')
@@ -30,22 +51,18 @@ export default async function handler(req, res) {
             .neq('status', 'Inativo');
 
         if (error) throw error;
-        if (!leads || leads.length === 0) {
-            return res.status(200).json({ message: 'Nenhum lead elegível no momento.' });
-        }
+        if (!leads || leads.length === 0) return res.status(200).json({ message: 'Nenhum lead elegível.' });
 
         const now = new Date();
         const messagesToSend = [];
         const updatesToMake = [];
 
-        // 4. Analisar as regras de tempo para cada lead
         for (const lead of leads) {
             const inicio = new Date(lead.inicio_teste);
             const diffMs = now - inicio;
             const diffMinutos = Math.floor(diffMs / 60000);
             const diffHoras = diffMinutos / 60;
-
-            const duracaoHoras = lead.duracao_teste || 4; // default 4H se vazio
+            const duracaoHoras = lead.duracao_teste || 4; 
             const followups = lead.followup_status || {};
             
             let nameToSay = (lead.nome || lead.name || 'Amigo(a)').split(' ')[0];
@@ -56,85 +73,70 @@ export default async function handler(req, res) {
             let messageToQueue = null;
             let followKey = null;
 
-            // Checagem do maior (dia 7) para o menor (30 min)
             if (diffHoras >= 168 && !followups['dia7']) {
-                messageToQueue = `Olá ${nameToSay}! Só passando para avisar que é nossa última tentativa de contato. Ainda tem interesse no app?`;
+                messageToQueue = getMessageObj('FUNIL-DIA7', `Olá ${nameToSay}! Só passando para avisar que é nossa última tentativa de contato. Ainda tem interesse no app?`, nameToSay);
                 followKey = 'dia7';
             } else if (diffHoras >= 72 && !followups['dia3']) {
-                messageToQueue = `Oi ${nameToSay}, tudo bem? Consigo te fazer uma condição super especial para fecharmos hoje! Me manda um OK.`;
+                messageToQueue = getMessageObj('FUNIL-DIA3', `Oi ${nameToSay}, tudo bem? Consigo te fazer uma condição super especial para fecharmos hoje! Me manda um OK.`, nameToSay);
                 followKey = 'dia3';
             } else if (diffHoras >= 24 && !followups['dia1']) {
-                messageToQueue = `Oi ${nameToSay}, como foi o dia ontem? Gostou do nosso IPTV? Ficou com alguma dúvida?`;
+                messageToQueue = getMessageObj('FUNIL-DIA1', `Oi ${nameToSay}, como foi o dia ontem? Gostou do nosso IPTV? Ficou com alguma dúvida?`, nameToSay);
                 followKey = 'dia1';
             } else if (diffHoras >= duracaoHoras && !followups['fim']) {
-                messageToQueue = `Seu teste VIP encerrou, ${nameToSay}! O que achou da grade de canais e filmes? Dá uma olhada nos nossos planos mensais e anuais!`;
+                messageToQueue = getMessageObj('FUNIL-FIM', `Seu teste VIP encerrou, ${nameToSay}! O que achou da grade de canais e filmes?`, nameToSay);
                 followKey = 'fim';
             } else if (diffMinutos >= 30 && !followups['30m']) {
-                messageToQueue = `E aí ${nameToSay}, conseguiu acessar os canais? Se precisar de ajuda para instalar, pode me chamar aqui!`;
+                messageToQueue = getMessageObj('FUNIL-30M', `E aí ${nameToSay}, conseguiu acessar os canais? Se precisar de ajuda para instalar, pode me chamar!`, nameToSay);
                 followKey = '30m';
             }
 
-            // Se algo ativou, vamos salvar na fila
             if (messageToQueue && followKey) {
-                // Atualizamos localmente a flag
                 const newFollowups = { ...followups, [followKey]: true };
                 
-                messagesToSend.push({
+                let msgData = {
                     number: cleanPhone,
                     type: 'text',
-                    text: messageToQueue
-                });
+                    text: messageToQueue.text
+                };
 
-                updatesToMake.push({
-                    id: lead.id,
-                    followup_status: newFollowups
-                });
+                // Tratar mídia (imagem ou vídeo) dinamicamente pra uazapi
+                if (messageToQueue.url) {
+                    const lUrl = messageToQueue.url.toLowerCase();
+                    if(lUrl.endsWith('.mp4')) msgData.type = 'video';
+                    else if(lUrl.endsWith('.mp3') || lUrl.endsWith('.ogg')) msgData.type = 'audio';
+                    else msgData.type = 'image';
+                    
+                    msgData.url = messageToQueue.url;
+                }
+
+                messagesToSend.push(msgData);
+                updatesToMake.push({ id: lead.id, followup_status: newFollowups });
             }
         }
 
-        // 5. Se houver mensagens, enviamos para UAZAPI
         if (messagesToSend.length > 0) {
-            const url = `${UAZAPI_URL}/sender/advanced`;
-            const payload = {
-                instance: INSTANCE_ID,
-                delayMin: 15,
-                delayMax: 30, // Delay seguro
-                info: `crm-cron-funnel-${Date.now()}`,
-                messages: messagesToSend,
-                token: API_KEY
-            };
-
-            const response = await fetch(url, {
+            const response = await fetch(`${UAZAPI_URL}/sender/advanced`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'apikey': API_KEY,
-                    'token': API_KEY,
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'instance': INSTANCE_ID
+                    'apikey': API_KEY, 'token': API_KEY, 'instance': INSTANCE_ID
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    instance: INSTANCE_ID, delayMin: 15, delayMax: 30,
+                    info: `crm-cron-funnel`, messages: messagesToSend, token: API_KEY
+                })
             });
+            if (!response.ok) throw new Error(await response.text());
 
-            if (!response.ok) {
-                const err = await response.text();
-                throw new Error(`UAZAPI falhou (${response.status}): ${err}`);
-            }
-
-            // 6. Atualizamos os status de followup no Supabase
-            // Como Supabase JS não suporta Bulk Update facilmente de diferentes valores,
-            // podemos iterar e fazer upsert ou Promise.all
             await Promise.all(updatesToMake.map(upd => 
                 supabase.from('leads').update({ followup_status: upd.followup_status, updated_at: new Date() }).eq('id', upd.id)
             ));
-
             return res.status(200).json({ success: true, disparos: messagesToSend.length });
         }
 
-        return res.status(200).json({ success: true, disparos: 0, message: 'Ninguém precisava de mensagem agora.' });
+        return res.status(200).json({ success: true, disparos: 0 });
 
     } catch (error) {
-        console.error('Erro no fluxo Cron:', error);
         return res.status(500).json({ success: false, error: error.message });
     }
 }
