@@ -37,7 +37,6 @@ function initApp() {
     const csvFileInput = document.getElementById('csvFileInput');
     const processCsvBtn = document.getElementById('processCsvBtn');
     const importResult = document.getElementById('importResult');
-    const importStatusTarget = document.getElementById('importStatusTarget');
 
     function showToast(message, type = 'success') {
         if(!toast) return;
@@ -165,7 +164,7 @@ function initApp() {
                 if(id) {
                     const { error } = await dbClient.from('mensagens').update(dataObj).eq('id', id);
                     if (error) throw error;
-                    showToast('Mensagem atualizada! O robô já utilizará a nova.', 'success');
+                    showToast('Mensagem atualizada!', 'success');
                 } else {
                     const { error } = await dbClient.from('mensagens').insert([dataObj]);
                     if (error) throw error;
@@ -209,13 +208,13 @@ function initApp() {
             card.className = "kpi-card";
             card.style = "flex-direction: column; align-items: stretch; justify-content: space-between;";
             
-            const isFunnel = msg.chave.startsWith('FUNIL');
+            const isFunnel = (msg.chave || '').startsWith('FUNIL');
             const iconColor = isFunnel ? '#8B5CF6' : 'var(--text-primary)';
             const mediaIcon = msg.midia_url ? '<i class="fa-solid fa-paperclip" style="color: var(--text-muted);"></i>' : '';
             
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-                    <h3 style="font-size: 15px; color: ${iconColor}; font-weight: 600;"><i class="fa-solid fa-${isFunnel ? 'robot' : 'message'}"></i> ${msg.chave}</h3>
+                    <h3 style="font-size: 15px; color: ${iconColor}; font-weight: 600;"><i class="fa-solid fa-${isFunnel ? 'robot' : 'message'}"></i> ${msg.chave || 'S/N'}</h3>
                     ${mediaIcon}
                 </div>
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-height: 60px;">${msg.texto}</p>
@@ -323,14 +322,13 @@ function initApp() {
             renderFollowUps();
             renderDashboardMetrics();
             renderFunnel();
-            // Também carrega as mensagens assim que carrega os leads
+            // Carrega as mensagens
             fetchMessages();
         } catch (error) {
             showToast(`Erro ao carregar leads: ${error.message}`, 'error');
         }
     }
 
-    // Include the remaining rendering logic for Kanban, Dashboard, Funnel identical to before...
     function renderKanban() {
         const statuses = ['Novo', 'Leads Frios', 'Teste Grátis', 'Ativo', 'Vencido', 'Inativo'];
         statuses.forEach(status => {
@@ -394,21 +392,21 @@ function initApp() {
             const status = lead.status || 'Novo';
             if (status === 'Novo' && lead.comprou !== 'Sim' && lead.data_contato) {
                 const diffDays = (todayTimestamp - new Date(lead.data_contato).getTime()) / DAY_IN_MS;
-                if (diffDays >= 7) {
+                if (diffDays >= 7 && colFrios) {
                     colFrios.appendChild(createFollowUpCard(lead, `Há ${Math.floor(diffDays)} dias`, '#60A5FA'));
                     numFrios++;
                 }
             }
             if (status === 'Teste Grátis' && lead.data_contato) {
                 const diffDays = (todayTimestamp - new Date(lead.data_contato).getTime()) / DAY_IN_MS;
-                if (diffDays >= 1) {
+                if (diffDays >= 1 && colResgate) {
                     colResgate.appendChild(createFollowUpCard(lead, `Há ${Math.floor(diffDays)} dias`, '#F59E0B'));
                     numResgate++;
                 }
             }
             if (status === 'Ativo' && lead.data_vencimento) {
                 const diffDays = (new Date(lead.data_vencimento).getTime() - todayTimestamp) / DAY_IN_MS;
-                if (diffDays >= -1 && diffDays <= 4) {
+                if (diffDays >= -1 && diffDays <= 4 && colVencimento) {
                     let msg = diffDays < 0 ? 'Venceu ontem' : (diffDays < 1 ? 'Vence HOJE' : `Em ${Math.floor(diffDays)} dias`);
                     colVencimento.appendChild(createFollowUpCard(lead, msg, '#EF4444'));
                     numVencimento++;
@@ -438,7 +436,6 @@ function initApp() {
         if (document.getElementById('kpi-ativos')) document.getElementById('kpi-ativos').innerText = ativos;
         if (document.getElementById('kpi-conversao')) document.getElementById('kpi-conversao').innerText = `${convRate}%`;
 
-        // Render charts code kept exact same structure
         const ctxPerDay = document.getElementById('leadsPerDayChart');
         if (ctxPerDay) {
             const datesMap = {};
@@ -481,7 +478,7 @@ function initApp() {
             if (isEligible && !l.inicio_teste) {
                 const opt = document.createElement('option');
                 opt.value = l.id;
-                opt.innerText = `${l.nome || 'Sem Nome'} (${l.telefone || l.phone || 'S/N'})`;
+                opt.innerText = `${l.nome || 'Sem Nome'} (${l.telefone || l.phone || l.whatsapp || 'S/N'})`;
                 select.appendChild(opt);
             }
             if (l.inicio_teste && isEligible) {
@@ -532,12 +529,15 @@ function initApp() {
         if(deleteLeadBtn) deleteLeadBtn.style.display = 'block';
         if(leadModal) leadModal.classList.add('active');
     };
+    
     window.editLeadById = function(id) { const lead = leads.find(l => l.id === id); if(lead) window.editLead(lead); }
+    
     window.stopFunnel = async function(id) {
         if (!confirm('Deseja parar o robô para este lead?')) return;
         await dbClient.from('leads').update({ inicio_teste: null }).eq('id', id);
         fetchLeads();
     }
+    
     window.sendUazapiFast = function(phone, name) {
         const broadcastNav = document.querySelector('a[data-target="broadcast-container"]');
         if(broadcastNav) broadcastNav.click();
@@ -566,8 +566,8 @@ function initApp() {
     if (processCsvBtn) {
         processCsvBtn.addEventListener('click', async () => {
             if (!csvFileInput.files || csvFileInput.files.length === 0) return;
-            const res = await new FileReader();
-            res.onload = async (e) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
                 const lines = e.target.result.split(/\r?\n/).filter(l => l.trim() !== '');
                 const headers = lines[0].split(lines[0].includes(';') ? ';' : ',').map(h => h.trim().toLowerCase());
                 const nameIdx = headers.findIndex(h => h.includes('nome'));
@@ -585,8 +585,9 @@ function initApp() {
                 showToast(`Sucesso! ${arrayToInsert.length} leads salvos.`, 'success');
                 fetchLeads();
             };
-            res.readAsText(csvFileInput.files[0]);
+            reader.readAsText(csvFileInput.files[0]);
         });
     }
 }
+
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initApp); } else { initApp(); }
