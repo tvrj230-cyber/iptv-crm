@@ -83,6 +83,7 @@ function initApp() {
                     const followup = document.getElementById('followup-container');
                     const importCont = document.getElementById('import-container');
                     const quickSendCont = document.getElementById('quick-send-container');
+                    const testManagerCont = document.getElementById('test-manager-container');
                     const targetEl = document.getElementById(targetId);
                     
                     if(board) board.style.display = 'none';
@@ -91,6 +92,7 @@ function initApp() {
                     if(followup) followup.style.display = 'none';
                     if(importCont) importCont.style.display = 'none';
                     if(quickSendCont) quickSendCont.style.display = 'none';
+                    if(testManagerCont) testManagerCont.style.display = 'none';
                     
                     if(targetEl) targetEl.style.display = 'block';
                 }
@@ -229,6 +231,7 @@ function initApp() {
             renderKanban();
             renderFollowUps();
             renderDashboardMetrics();
+            renderFunnel();
         } catch (error) {
             console.error(error);
             showToast(`Erro ao carregar: ${error.message}`, 'error');
@@ -458,6 +461,54 @@ function initApp() {
         }
     }
 
+    function renderFunnel() {
+        const select = document.getElementById('funnelSelectLead');
+        const list = document.getElementById('funnelActiveList');
+        if (!select || !list) return;
+
+        select.innerHTML = '<option value="">-- Selecione o Lead --</option>';
+        list.innerHTML = '';
+
+        let hasActive = false;
+
+        leads.forEach(l => {
+            // Regra de inelegilidade: Comprou, Nao Comprou, Ativo ou Inativo = nao recebe funil
+            const isEligible = (l.comprou !== 'Sim' && l.comprou !== 'Não' && l.status !== 'Ativo' && l.status !== 'Inativo');
+            
+            if (isEligible && !l.inicio_teste) {
+                const opt = document.createElement('option');
+                opt.value = l.id;
+                opt.innerText = `${l.nome || 'Sem Nome'} (${l.phone || 'S/N'})`;
+                select.appendChild(opt);
+            }
+
+            if (l.inicio_teste && isEligible) {
+                hasActive = true;
+                const card = document.createElement('div');
+                card.style = "padding: 15px; border-radius: 6px; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.3); display: flex; justify-content: space-between; align-items: center;";
+                
+                const start = new Date(l.inicio_teste);
+                const now = new Date();
+                const horas = Math.floor((now - start) / 3600000);
+                
+                card.innerHTML = `
+                    <div>
+                        <strong>${l.nome || 'Sem Nome'}</strong> <span style="font-size: 12px; color: var(--text-muted);">(${l.phone || 'S/N'})</span><br>
+                        <small style="color: #8B5CF6;"><i class="fa-solid fa-clock"></i> Robô roda há ${horas}h (Alvo Duração: ${l.duracao_teste || 4}h)</small>
+                    </div>
+                    <div>
+                        <button onclick="window.stopFunnel('${l.id}')" class="btn-secondary" style="font-size: 11px; padding: 5px 10px; border-color: #EF4444; color: #EF4444;"><i class="fa-solid fa-stop"></i> Parar Máquina</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            }
+        });
+
+        if (!hasActive) {
+            list.innerHTML = '<div style="padding: 15px; border-radius: 6px; border: 1px dashed var(--border-color); text-align: center; color: var(--text-muted);">Nenhum lead sendo monitorado.</div>';
+        }
+    }
+
     function createFollowUpCard(lead, infoMsg, color) {
         const card = document.createElement('div');
         card.className = 'lead-card';
@@ -630,6 +681,56 @@ function initApp() {
 
             reader.readAsText(file);
         });
+    }
+
+    // --- FUNNEL / TEST START LOGIC ---
+    const startFunnelBtn = document.getElementById('startFunnelBtn');
+    if (startFunnelBtn) {
+        startFunnelBtn.addEventListener('click', async () => {
+            const leadId = document.getElementById('funnelSelectLead').value;
+            const duracao = document.getElementById('funnelTestDuration').value;
+
+            if (!leadId) return showToast('Selecione um lead primeiro!', 'error');
+            if (!dbClient) return showToast('Supabase não conectado!', 'error');
+
+            try {
+                startFunnelBtn.disabled = true;
+                startFunnelBtn.innerText = 'Ativando...';
+
+                // Tenta ativar a flag
+                const { error } = await dbClient.from('leads').update({
+                    inicio_teste: new Date().toISOString(),
+                    duracao_teste: parseInt(duracao),
+                    status: 'Teste Grátis',
+                    followup_status: {} // Reinicia o painel do status de envios
+                }).eq('id', leadId);
+
+                // AVISO IMPORTANTE: Se o Supabase do usuário não tiver as colunas inicio_teste, duracao_teste, followup_status, vai estourar erro
+                if (error) throw error;
+
+                showToast('Funil Automático ativado para esse Lead! A primeira mensagem chegará em 30 min.', 'success');
+                fetchLeads();
+            } catch (e) {
+                console.error(e);
+                showToast(`Se o erro for sobre "column does not exist", execute no SQL do Supabase! Detalhe: ${e.message}`, 'error');
+            } finally {
+                startFunnelBtn.disabled = false;
+                startFunnelBtn.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Máquina';
+            }
+        });
+    }
+
+    // Global Stop Funnel
+    window.stopFunnel = async function(id) {
+        if (!confirm('Deseja cancelar o acompanhamento automático do robô para este lead?')) return;
+        try {
+            const { error } = await dbClient.from('leads').update({ inicio_teste: null }).eq('id', id);
+            if (error) throw error;
+            showToast('Robô interrompido com sucesso.', 'success');
+            fetchLeads();
+        } catch (e) {
+            showToast(`Erro: ${e.message}`, 'error');
+        }
     }
 
     // --- QUICK SEND (AVULSO) LOGIC ---

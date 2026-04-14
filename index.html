@@ -44,6 +44,9 @@
                 <a href="#" class="nav-item" data-target="quick-send-container">
                     <i class="fa-solid fa-bolt"></i> Disparo Avulso
                 </a>
+                <a href="#" class="nav-item" data-target="test-manager-container">
+                    <i class="fa-solid fa-object-ungroup"></i> Funil de Teste
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-info">
@@ -354,6 +357,36 @@
 
                     <div class="form-group" style="margin-top: 25px;">
                         <button id="startQuickSendBtn" class="btn-primary" style="background-color: #F59E0B; color: #111; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); width: 100%; justify-content: center;"><i class="fa-solid fa-paper-plane"></i> Enviar para Válidos</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Manager / Funnel View -->
+            <div class="test-manager-container" id="test-manager-container" style="display: none; padding: 24px 30px; overflow-y: auto;">
+                <div class="broadcast-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 24px; border-radius: var(--radius-lg); max-width: 800px;">
+                    <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-robot" style="color: #8B5CF6;"></i> Funil de Vendas e Testes (Robô)</h2>
+                    
+                    <div style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid #8B5CF6; padding: 12px 16px; margin-bottom: 24px; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                        <p style="font-size: 14px; color: var(--text-primary);">Acompanhe e ative testes. Uma vez iniciado, o robô assume a comunicação com o cliente: <strong>30 min, fim do teste, 1 dia, 3 dias e 7 dias</strong>.</p>
+                        <p style="font-size: 12px; margin-top: 5px; color: #8B5CF6;"><i class="fa-solid fa-link"></i> Endpoint P/ Cron: <code>/api/cron_followup</code></p>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-bottom: 25px;">
+                        <select id="funnelSelectLead" style="flex: 2; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary);">
+                            <option value="">-- Carregando Leads Pendentes... --</option>
+                        </select>
+                        <select id="funnelTestDuration" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary);">
+                            <option value="4">4 Horas</option>
+                            <option value="12">12 Horas</option>
+                            <option value="24">24 Horas</option>
+                        </select>
+                        <button id="startFunnelBtn" class="btn-primary" style="background-color: #8B5CF6; color: white;"><i class="fa-solid fa-play"></i> Iniciar Máquina</button>
+                    </div>
+
+                    <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 16px;">Testes Rodando na Máquina</h3>
+                    <div id="funnelActiveList" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- List of active funnel leads will populate here -->
+                        <div style="padding: 15px; border-radius: 6px; border: 1px dashed var(--border-color); text-align: center; color: var(--text-muted);">Aguardando...</div>
                     </div>
                 </div>
             </div>
