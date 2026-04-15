@@ -355,7 +355,12 @@ function initApp() {
                 }
 
                 card.innerHTML = `
-                    <div class="card-header"><span class="card-title">${lead.nome || 'Sem Nome'}</span></div>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                        <span class="card-title" style="flex: 1; word-wrap: anywhere;">${lead.nome || 'Sem Nome'}</span>
+                        <div onclick="window.deleteLeadDirect('${lead.id}', event)" class="delete-icon" style="color: #ef4444; cursor: pointer; padding: 4px; border-radius: 4px; flex-shrink: 0;" title="Excluir Lead">
+                            <i class="fa-solid fa-trash"></i>
+                        </div>
+                    </div>
                     <div class="card-body">
                         <div class="card-info"><i class="fa-brands fa-whatsapp"></i> ${lead.telefone || lead.phone || lead.whatsapp || 'S/N'}</div>
                         <div class="card-info"><i class="fa-regular fa-calendar"></i> ${dateStr}</div>
@@ -531,6 +536,17 @@ function initApp() {
     };
     
     window.editLeadById = function(id) { const lead = leads.find(l => l.id === id); if(lead) window.editLead(lead); }
+    
+    window.deleteLeadDirect = async function(id, ev) {
+        if(ev) ev.stopPropagation();
+        if(!confirm('Deseja excluir o lead permanentemente?')) return;
+        try {
+            const { error } = await dbClient.from('leads').delete().eq('id', id);
+            if (error) throw error;
+            showToast('Lead excluído.', 'success');
+            fetchLeads();
+        } catch (err) { showToast(`Erro ao excluir: ${err.message}`, 'error'); }
+    };
     
     window.stopFunnel = async function(id) {
         if (!confirm('Deseja parar o robô para este lead?')) return;
