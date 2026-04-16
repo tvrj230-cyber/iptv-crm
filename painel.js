@@ -1,5 +1,6 @@
 // State
 let leads = [];
+let dbMessages = [];
 let dbClient = null;
 let broadcastIsRunning = false;
 let leadsPerDayChartInstance = null;
@@ -13,6 +14,15 @@ function initApp() {
     const cancelBtn = document.getElementById('cancelBtn');
     const deleteLeadBtn = document.getElementById('deleteLeadBtn');
     const leadForm = document.getElementById('leadForm');
+
+    // DOM Elements - Messages
+    const addMessageBtn = document.getElementById('addMessageBtn');
+    const messageModal = document.getElementById('messageModal');
+    const closeMessageModalBtn = document.getElementById('closeMessageModalBtn');
+    const cancelMessageBtn = document.getElementById('cancelMessageBtn');
+    const deleteMessageBtn = document.getElementById('deleteMessageBtn');
+    const messageForm = document.getElementById('messageForm');
+
     const toast = document.getElementById('toast');
     const navItems = document.querySelectorAll('.nav-item');
     const dataContato = document.getElementById('dataContato');
@@ -84,6 +94,7 @@ function initApp() {
                     const importCont = document.getElementById('import-container');
                     const quickSendCont = document.getElementById('quick-send-container');
                     const testManagerCont = document.getElementById('test-manager-container');
+                    const msgsCont = document.getElementById('messages-container');
                     const targetEl = document.getElementById(targetId);
                     
                     if(board) board.style.display = 'none';
@@ -93,10 +104,134 @@ function initApp() {
                     if(importCont) importCont.style.display = 'none';
                     if(quickSendCont) quickSendCont.style.display = 'none';
                     if(testManagerCont) testManagerCont.style.display = 'none';
+                    if(msgsCont) msgsCont.style.display = 'none';
                     
                     if(targetEl) targetEl.style.display = 'block';
                 }
             });
+        });
+    }
+
+    // --- MESSAGES CRUD LOGIC ---
+    function openMessageModal() {
+        if(messageForm) messageForm.reset();
+        if(document.getElementById('messageId')) document.getElementById('messageId').value = '';
+        if(deleteMessageBtn) deleteMessageBtn.style.display = 'none';
+        if(messageModal) messageModal.classList.add('active');
+    }
+    
+    function closeMessageModal() {
+        if(messageModal) messageModal.classList.remove('active');
+    }
+
+    if(addMessageBtn) addMessageBtn.addEventListener('click', openMessageModal);
+    if(closeMessageModalBtn) closeMessageModalBtn.addEventListener('click', closeMessageModal);
+    if(cancelMessageBtn) cancelMessageBtn.addEventListener('click', closeMessageModal);
+
+    window.editMessage = function(id) {
+        const msg = dbMessages.find(m => m.id === id);
+        if(msg) {
+            document.getElementById('messageId').value = msg.id;
+            document.getElementById('msgChave').value = msg.chave || '';
+            document.getElementById('msgTexto').value = msg.texto || '';
+            document.getElementById('msgMidia').value = msg.midia_url || '';
+            
+            if(deleteMessageBtn) deleteMessageBtn.style.display = 'block';
+            if(messageModal) messageModal.classList.add('active');
+        }
+    }
+
+    if(deleteMessageBtn) {
+        deleteMessageBtn.addEventListener('click', async () => {
+            const id = document.getElementById('messageId').value;
+            if (!id || !confirm('Excluir esta mensagem permanentemente?')) return;
+            
+            try {
+                const { error } = await dbClient.from('mensagens').delete().eq('id', id);
+                if (error) throw error;
+                showToast('Mensagem excluída.', 'success');
+                closeMessageModal();
+                fetchMessages();
+            } catch(e) {
+                showToast(`Erro ao excluir: ${e.message}`, 'error');
+            }
+        });
+    }
+
+    if(messageForm) {
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('messageId').value;
+            const chave = document.getElementById('msgChave').value.trim();
+            const texto = document.getElementById('msgTexto').value.trim();
+            const midia_url = document.getElementById('msgMidia').value.trim() || null;
+    
+            if(!dbClient) return showToast('Sem conexão db', 'error');
+            const dataObj = { chave, texto, midia_url };
+    
+            try {
+                if(id) {
+                    const { error } = await dbClient.from('mensagens').update(dataObj).eq('id', id);
+                    if (error) throw error;
+                    showToast('Mensagem atualizada!', 'success');
+                } else {
+                    const { error } = await dbClient.from('mensagens').insert([dataObj]);
+                    if (error) throw error;
+                    showToast('Mensagem salva com sucesso!', 'success');
+                }
+                closeMessageModal();
+                fetchMessages();
+            } catch(e) {
+                showToast(`Erro Supabase: ${e.message}`, 'error');
+            }
+        });
+    }
+
+    async function fetchMessages() {
+        try {
+            const { data, error } = await dbClient.from('mensagens').select('*').order('created_at', { ascending: false });
+            if (error) {
+                if(error.code === '42P01') console.log('Tabela mensagens aguardando criação no Supabase.');
+                else throw error;
+            } else {
+                dbMessages = data || [];
+                renderMessages();
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
+    function renderMessages() {
+        const grid = document.getElementById('messagesGrid');
+        if(!grid) return;
+        grid.innerHTML = '';
+        
+        if(dbMessages.length === 0) {
+            grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; grid-column: 1/-1;">Nenhuma mensagem customizada foi encontrada.</p>';
+            return;
+        }
+    
+        dbMessages.forEach(msg => {
+            const card = document.createElement('div');
+            card.className = "kpi-card";
+            card.style = "flex-direction: column; align-items: stretch; justify-content: space-between;";
+            
+            const isFunnel = (msg.chave || '').startsWith('FUNIL');
+            const iconColor = isFunnel ? '#8B5CF6' : 'var(--text-primary)';
+            const mediaIcon = msg.midia_url ? '<i class="fa-solid fa-paperclip" style="color: var(--text-muted);"></i>' : '';
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <h3 style="font-size: 15px; color: ${iconColor}; font-weight: 600;"><i class="fa-solid fa-${isFunnel ? 'robot' : 'message'}"></i> ${msg.chave || 'S/N'}</h3>
+                    ${mediaIcon}
+                </div>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-height: 60px;">${msg.texto}</p>
+                <div style="margin-top: auto; display: flex; gap: 8px;">
+                    <button onclick="window.editMessage('${msg.id}')" class="btn-secondary" style="flex: 1; padding: 6px; font-size: 13px; justify-content: center;"><i class="fa-solid fa-pen"></i> Editar</button>
+                </div>
+            `;
+            grid.appendChild(card);
         });
     }
 
@@ -234,6 +369,7 @@ function initApp() {
             renderFollowUps();
             renderDashboardMetrics();
             renderFunnel();
+            fetchMessages();
         } catch (error) {
             console.error(error);
             showToast(`Erro ao carregar: ${error.message}`, 'error');
